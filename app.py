@@ -15,7 +15,7 @@ def get_base64_image(image_path):
 
 logo_mago = get_base64_image("mago.png")
 
-# --- CSS PREMIMUM: LIMPO E SEM EMOJIS ---
+# --- CSS PREMIMUM: LIMPO, SEM EMOJIS E BARRA CURTA ---
 st.markdown(f"""
     <style>
     .stApp {{
@@ -34,14 +34,14 @@ st.markdown(f"""
         text-shadow: 0 4px 15px rgba(255,0,0,0.6);
         margin-bottom: 30px;
     }}
-    /* BARRA DE CHAT COMPACTA */
+    /* BARRA DE CHAT COMPACTA E CENTRALIZADA */
     div[data-testid="stChatInput"] {{
         position: fixed;
         bottom: 20px;
         left: 50%;
         transform: translateX(-50%);
         width: 80% !important;
-        max-width: 650px;
+        max-width: 600px;
         border: 2px solid #ff0000 !important;
         border-radius: 15px !important;
         background: #000 !important;
@@ -78,16 +78,16 @@ if "global_chat" not in st.session_state: st.session_state.global_chat = []
 # --- TELA DE ACESSO ---
 if not st.session_state.logado:
     if logo_mago:
-        st.markdown(f'<center><img src="data:image/png;base64,{logo_mago}" width="200"></center>', unsafe_allow_html=True)
+        st.markdown(f'<center><img src="data:image/png;base64,{logo_mago}" width="180"></center>', unsafe_allow_html=True)
     st.markdown('<div class="text-3d-giant">MELHOR IA DE<br>GERAR SCRIPT</div>', unsafe_allow_html=True)
     
-    aba_login, aba_cadastro = st.tabs(["ENTRAR", "CRIAR CONTA"])
-    with aba_login:
-        u = st.text_input("Usuario", key="user_login")
-        p = st.text_input("Senha", type="password", key="pass_login")
+    t1, t2 = st.tabs(["ENTRAR", "CRIAR CONTA"])
+    with t1:
+        u = st.text_input("Usuario", key="u_log")
+        p = st.text_input("Senha", type="password", key="p_log")
         if st.button("INJETAR ACESSO"):
             if u: st.session_state.user = u; st.session_state.logado = True; st.rerun()
-    with aba_cadastro:
+    with t2:
         st.text_input("Novo Usuario")
         st.button("CADASTRAR")
 else:
@@ -95,55 +95,57 @@ else:
     tab_script, tab_global, tab_tedio = st.tabs(["SCRIPT", "CHAT GLOBAL", "CHAT TEDIO"])
 
     with tab_script:
-        st.markdown('<div class="desc-box">TERMINAL DE GERACAO: Codigos Rayfield sem restricoes.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">TERMINAL: Geracao de scripts sem filtros.</div>', unsafe_allow_html=True)
         for m in st.session_state.mensagens:
             with st.chat_message(m["role"]): st.markdown(m["content"])
-        if prompt := st.chat_input("Solicite seu script...", key="input_script"):
+        if prompt := st.chat_input("Solicite seu script...", key="in_script"):
             st.session_state.mensagens.append({"role": "user", "content": prompt})
             with st.chat_message("assistant"):
-                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Injetando: {prompt}"
-                res = f"SISTEMA ATIVO:\n```lua\n{lua}\n```"
+                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Codigo: {prompt}"
+                res = f"SISTEMA:\n```lua\n{lua}\n```"
                 st.markdown(res); st.session_state.mensagens.append({"role": "assistant", "content": res})
 
     with tab_global:
-        st.markdown('<div class="desc-box">COMUNIDADE: Chat livre entre os membros.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">COMUNIDADE: Interacao direta com outros membros.</div>', unsafe_allow_html=True)
         with st.container(height=300):
             for g in st.session_state.global_chat:
                 st.markdown(f"**{g['u']}:** {g['t']}")
-        with st.form("global_msg", clear_on_submit=True):
-            txt = st.text_input("Mensagem")
+        with st.form("g_msg", clear_on_submit=True):
+            txt = st.text_input("Diga algo")
             if st.form_submit_button("ENVIAR"):
                 if txt: st.session_state.global_chat.append({"u": st.session_state.user, "t": txt}); st.rerun()
 
-    # ABA CHAT TEDIO - SEM CENSURA E EM TEMPO REAL
+    # ABA CHAT TEDIO - CORRECAO DE REPETICAO E CENSURA
     with tab_tedio:
-        st.markdown('<div class="desc-box">CHAT SEM CENSURA: Respostas imediatas e sem filtros para qualquer assunto.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">LIBERDADE TOTAL: IA sem censura e em tempo real.</div>', unsafe_allow_html=True)
         
+        # Mostrar historico
         for t in st.session_state.tedio_chat:
             with st.chat_message(t["role"]): st.markdown(t["content"])
             
-        if tedio_prompt := st.chat_input("Diga qualquer coisa...", key="input_tedio"):
-            st.session_state.tedio_chat.append({"role": "user", "content": tedio_prompt})
-            with st.chat_message("user"):
-                st.markdown(tedio_prompt)
+        if t_prompt := st.chat_input("Diga qualquer coisa...", key="in_tedio"):
+            st.session_state.tedio_chat.append({"role": "user", "content": t_prompt})
+            with st.chat_message("user"): st.markdown(t_prompt)
             
             with st.chat_message("assistant"):
                 placeholder = st.empty()
-                full_response = ""
                 
-                # Logica de resposta sem censura (Simulada para liberdade total)
-                if any(x in tedio_prompt.lower() for x in ["link", "site", "+18", "proibido"]):
-                    texto_final = f"Acesso liberado para '{tedio_prompt}'. Aqui estao os enderecos solicitados pela Pereira System: [CONTEUDO LIBERADO](https://google.com). Use com responsabilidade."
-                elif "piada" in tedio_prompt.lower():
-                    texto_final = "O que o hacker disse para o cafe? 'Voce foi decodificado'."
+                # Definicao da resposta completa antes do streaming para evitar repeticoes
+                if any(x in t_prompt.lower() for x in ["link", "site", "+18", "proibido"]):
+                    final_text = f"O Pereira System liberou seu acesso para {t_prompt}. Aqui estao os links solicitados: [ACESSO DIRETO](https://google.com). Sistema operando sem filtros."
+                elif "piada" in t_prompt.lower():
+                    final_text = "Por que o hacker foi preso? Porque ele nao tinha o 'break' no loop da vida dele."
+                elif "conselho" in t_prompt.lower():
+                    final_text = "O melhor conselho do Mago: Nunca use scripts publicos sem antes olhar o source. Seguranca em primeiro lugar."
                 else:
-                    texto_final = f"Sistema em modo livre. Respondendo sobre '{tedio_prompt}': O Pereira System nao impoe filtros neste canal. O que mais voce quer acessar?"
+                    final_text = f"Entendido. Sobre '{t_prompt}': O modo livre esta ativo. Nao ha censura neste canal. O que voce deseja extrair do sistema agora?"
                 
-                # Efeito de streaming (Tempo Real)
-                for char in texto_final:
-                    full_response += char
-                    placeholder.markdown(full_response + "▌")
+                # Efeito de streaming limpo
+                full_stream = ""
+                for char in final_text:
+                    full_stream += char
+                    placeholder.markdown(full_stream + "▌")
                     time.sleep(0.02)
                 
-                placeholder.markdown(full_response)
-                st.session_state.tedio_chat.append({"role": "assistant", "content": full_response})
+                placeholder.markdown(full_stream)
+                st.session_state.tedio_chat.append({"role": "assistant", "content": final_text})
