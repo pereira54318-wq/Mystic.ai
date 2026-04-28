@@ -3,155 +3,171 @@ import time
 import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="MYSTIC AI v3.1 👺", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="MYSTIC AI 👺", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CSS PREMIMUM: 3D TEXT, ANIMAÇÕES E FUNDO ---
+# --- CSS ULTRA CUSTOM: 3D TEXT, PARTICULAS E GEMINI UI ---
 st.markdown("""
     <style>
+    /* FUNDO COM PULSO E PARTÍCULAS */
     @keyframes pulse {
-        0% { background-color: #030000; }
-        50% { background-color: #120000; }
-        100% { background-color: #030000; }
+        0% { background-color: #050000; }
+        50% { background-color: #150000; }
+        100% { background-color: #050000; }
     }
-    
     .stApp {
-        animation: pulse 6s infinite;
-        background: #030000;
-        color: #ff0000;
+        animation: pulse 5s infinite;
+        background: #050000;
     }
-
-    /* TEXTO 3D NEGRITO */
-    .text-3d {
-        font-family: 'Arial Black', sans-serif;
-        font-size: 2.5em;
-        font-weight: bold;
-        color: #ff0000;
-        text-align: center;
-        text-transform: uppercase;
-        text-shadow: 
-            0 1px 0 #800000, 0 2px 0 #700000, 
-            0 3px 0 #600000, 0 4px 0 #500000, 
-            0 5px 0 #400000, 0 6px 1px rgba(0,0,0,.1), 
-            0 0 5px rgba(255,0,0,.2), 0 1px 3px rgba(255,0,0,.3), 
-            0 3px 5px rgba(255,0,0,.2), 0 5px 10px rgba(255,0,0,.25), 
-            0 10px 10px rgba(255,0,0,.2), 0 20px 20px rgba(255,0,0,.15);
-        margin-bottom: 30px;
-    }
-
-    /* BOLINHAS BRILHANTES */
     .stApp::before {
         content: '';
         position: absolute;
         width: 100%; height: 100%;
-        background-image: radial-gradient(#ff0000 0.7px, transparent 0.7px);
-        background-size: 25px 25px;
-        opacity: 0.15;
+        background-image: radial-gradient(#ff0000 0.8px, transparent 0.8px);
+        background-size: 20px 20px;
         z-index: 0;
-        pointer-events: none;
+        opacity: 0.3;
     }
 
-    /* INPUT GEMINI EMBAIXO */
+    /* TEXTO 3D GIGANTE E COMPACTO */
+    .text-3d-giant {
+        font-family: 'Arial Black', sans-serif;
+        font-size: 45px;
+        line-height: 0.9;
+        font-weight: 900;
+        color: #ff0000;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing: -2px;
+        text-shadow: 
+            0 1px 0 #b30000, 0 2px 0 #990000, 0 3px 0 #800000, 
+            0 4px 0 #660000, 0 5px 0 #4d0000, 0 6px 0 #330000,
+            0 10px 15px rgba(255,0,0,0.5);
+        margin-bottom: 40px;
+    }
+
+    /* BARRA DE CHAT ESTILO GEMINI (TAMANHO REAL) */
     div[data-testid="stChatInput"] {
         position: fixed;
-        bottom: 20px;
-        z-index: 99;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90% !important;
+        max-width: 800px;
+        background-color: #111 !important;
+        border: 1px solid #ff0000 !important;
+        border-radius: 28px !important;
+    }
+    div[data-testid="stChatInput"] textarea {
+        color: #fff !important;
     }
 
+    /* BOLHAS DE CHAT */
     .stChatMessage {
-        background: rgba(15, 0, 0, 0.9) !important;
-        border: 1px solid #ff0000 !important;
-        box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+        background: rgba(20, 0, 0, 0.8) !important;
+        border-radius: 20px !important;
+        border: 1px solid #400 !important;
+        margin-bottom: 15px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- INICIALIZAÇÃO DE ESTADO ---
+# --- SISTEMA DE SESSÃO ---
 if "logado" not in st.session_state: st.session_state.logado = False
-if "user_name" not in st.session_state: st.session_state.user_name = "Hacker"
-if "msg_script" not in st.session_state: st.session_state.msg_script = []
-if "foto_perfil" not in st.session_state: st.session_state.foto_perfil = None
+if "aba" not in st.session_state: st.session_state.aba = "Login"
+if "mensagens" not in st.session_state: st.session_state.mensagens = []
+if "user_info" not in st.session_state: st.session_state.user_info = {"nome": "", "email": "", "foto": None}
 
-# --- TELA DE LOGIN ---
-def mostrar_login():
-    st.markdown('<div class="text-3d">MELHOR IA DE GERAR SCRIPT</div>', unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center; color: white;'>👺 MYSTIC LOGIN</h3>", unsafe_allow_html=True)
+# --- SISTEMA DE LOGIN E CRIAÇÃO DE CONTA ---
+def sistema_acesso():
+    st.markdown('<div class="text-3d-giant">MELHOR IA DE<br>GERAR SCRIPT</div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        u = st.text_input("Usuário")
-    with col2:
-        p = st.text_input("Senha", type="password")
+    aba_login, aba_criar = st.tabs(["ENTRAR", "CRIAR CONTA"])
     
-    if st.button("INJETAR ACESSO"):
-        if u:
-            st.session_state.user_name = u
-            st.session_state.logado = True
-            st.rerun()
+    with aba_login:
+        u = st.text_input("Usuário/Email", key="login_u")
+        p = st.text_input("Senha", type="password", key="login_p")
+        if st.button("CONECTAR AO SISTEMA"):
+            if u and p:
+                st.session_state.user_info["nome"] = u
+                st.session_state.logado = True
+                st.rerun()
 
-# --- INTERFACE PRINCIPAL ---
+    with aba_criar:
+        new_u = st.text_input("Novo Usuário")
+        new_e = st.text_input("Gmail")
+        new_p = st.text_input("Senha", type="password")
+        new_p2 = st.text_input("Repetir Senha", type="password")
+        if st.button("CRIAR E VALIDAR GMAIL"):
+            if new_p == new_p2 and "@" in new_e:
+                st.success(f"Código enviado para {new_e}!")
+                st.text_input("Digite o código de 6 dígitos")
+                if st.button("CONFIRMAR CONTA"):
+                    st.session_state.logado = True
+                    st.rerun()
+            else: st.error("Dados inválidos ou senhas diferentes")
+
+# --- INTERFACE PRINCIPAL (PÓS-LOGIN) ---
 if not st.session_state.logado:
-    mostrar_login()
+    sistema_acesso()
 else:
-    # Sidebar
+    # Sidebar com Perfil
     with st.sidebar:
-        st.markdown(f"<h2 style='color:red;'>👺 {st.session_state.user_name}</h2>", unsafe_allow_html=True)
-        if st.session_state.foto_perfil:
-            st.image(st.session_state.foto_perfil, width=150)
+        st.markdown(f"### 👤 {st.session_state.user_info['nome']}")
+        if st.session_state.user_info["foto"]:
+            st.image(st.session_state.user_info["foto"], width=150)
         
-        f = st.file_uploader("Trocar Foto", type=['png', 'jpg'])
-        if f: 
-            st.session_state.foto_perfil = f
-            st.rerun()
-            
-        st.write(f"📱 Motorola G35")
-        st.write(f"🔋 85%")
-        if st.button("SAIR"):
-            st.session_state.logado = False
-            st.rerun()
+        up = st.file_uploader("Upload Foto Galeria", type=['png', 'jpg'])
+        if up: st.session_state.user_info["foto"] = up; st.rerun()
+        
+        st.markdown("---")
+        st.write(f"🕒 {datetime.datetime.now().strftime('%H:%M')}")
+        st.write("📱 Motorola G35")
+        st.write("🔋 88%")
+        if st.button("LOGOUT"): st.session_state.logado = False; st.rerun()
 
-    t1, t2 = st.tabs(["💬 TERMINAL", "🎨 IMAGEM"])
+    t1, t2, t3 = st.tabs(["💬 TERMINAL", "🎨 NANO BANANA", "👤 PERFIL"])
 
     with t1:
-        # Área de Chat
-        for m in st.session_state.msg_script:
-            with st.chat_message(m["role"]):
-                st.markdown(m["content"])
+        for m in st.session_state.mensagens:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
 
-        if prompt := st.chat_input("Diga o que quer hackear..."):
-            st.session_state.msg_script.append({"role": "user", "content": prompt})
-            
+        if prompt := st.chat_input("Solicite Script (Aimbot, ESP, Rayfield)..."):
+            st.session_state.mensagens.append({"role": "user", "content": prompt})
             with st.chat_message("assistant"):
-                placeholder = st.empty()
-                # GERAÇÃO RAYFIELD REAL
-                script = f"""-- [MYSTIC AI v3.1]
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+                res = st.empty()
+                # Geração de Script Hub Rayfield Real
+                code = f"""local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({{
-    Name = "Pereira System | {prompt}",
-    LoadingTitle = "Injetando...",
-    ConfigurationSaving = {{Enabled = true, FolderName = "Mystic", FileName = "Config"}}
+    Name = "MYSTIC HUB | {prompt}",
+    LoadingTitle = "Pereira System Injetando...",
+    ConfigurationSaving = {{Enabled = true, FileName = "MysticConfig"}}
 }})
 local Tab = Window:CreateTab("Scripts", 4483362458)
 Tab:CreateButton({{
-    Name = "Executar {prompt}",
+    Name = "Ativar {prompt}",
     Callback = function()
-        print("Ativado pelo Pereira54318-wq")
+        print("Executado via Mystic AI")
     end
 }})"""
-                full_res = f"📡 **Script Gerado:**\n\n```lua\n{script}\n```"
+                full_txt = f"📡 **Script Gerado em Tempo Real:**\n\n```lua\n{code}\n```"
                 
-                # Efeito de digitação de cima para baixo
-                temp_text = ""
-                for line in full_res.split('\n'):
-                    temp_text += line + "\n"
-                    placeholder.markdown(temp_text + "▒")
-                    time.sleep(0.05)
-                placeholder.markdown(full_res)
-                st.session_state.msg_script.append({"role": "assistant", "content": full_res})
+                # Efeito de escrita de cima para baixo
+                temp = ""
+                for line in full_txt.split('\n'):
+                    temp += line + "\n"
+                    res.markdown(temp + "▒")
+                    time.sleep(0.04)
+                res.markdown(full_txt)
+                st.session_state.mensagens.append({"role": "assistant", "content": full_txt})
 
     with t2:
-        st.write("🎨 Gerador NanoBanana")
-        if img_p := st.chat_input("Descreva a imagem...", key="img_input"):
-             with st.chat_message("assistant"):
-                 st.write(f"Gerando: {img_p}")
-                 st.image(f"https://placehold.co/600x400/200000/ff0000?text={img_p}")
-                 
+        st.write("🎨 Gerador Nano Banana")
+        if img_p := st.chat_input("O que a IA deve desenhar?", key="nano_input"):
+            with st.chat_message("assistant"):
+                st.image(f"https://placehold.co/600x400/200000/ff0000?text={img_p}")
+
+    with t3:
+        st.subheader("Gerenciamento de Contas")
+        st.write("Contas vinculadas: 1/5")
+        st.text_input("Vincular nova conta...")
+        st.button("Vincular")
