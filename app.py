@@ -2,126 +2,247 @@ import streamlit as st
 import time
 import datetime
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="MYSTIC AI 👺", layout="wide", initial_sidebar_state="collapsed")
+# --- CONFIGURAÇÃO DA PÁGINA (MOBILE/PC) ---
+st.set_page_config(title="MYSTIC AI v3.0 👺", layout="wide", initial_sidebar_state="collapsed")
 
-# --- ESTILO CYBER HACK VERMELHO (UI/UX) ---
+# --- CSS PREMIMUM: ANIMAÇÕES, FUNDO E LAYOUT GEMINI ---
+# Inclui: Fundo piscando (keyframe 'pulse'), Bolhas piscando ('sparkle'), Layout Gemini.
 st.markdown("""
     <style>
+    /* FUNDO ANMADO PISCANDO LENTAMENTE EM VERMELHO */
+    @keyframes pulse {
+        0% { background-color: #030000; }
+        50% { background-color: #0d0000; }
+        100% { background-color: #030000; }
+    }
+    
     .stApp {
-        background: #050000;
-        background-image: radial-gradient(#ff0000 0.8px, transparent 0.8px);
-        background-size: 30px 30px;
+        animation: pulse 8s infinite;
+        background: #030000;
         color: #ff0000;
     }
-    .stChatMessage { background-color: rgba(20, 0, 0, 0.8) !important; border: 1px solid #ff0000 !important; border-radius: 15px; }
-    .profile-card { border: 2px solid #ff0000; padding: 20px; border-radius: 15px; background: rgba(30, 0, 0, 0.9); box-shadow: 0 0 20px #ff0000; }
-    .stButton>button { background-color: #ff0000; color: white; border-radius: 10px; width: 100%; border: none; }
-    .stTextInput input { background-color: #1a0000; color: #ff4444; border: 1px solid #ff0000; }
+
+    /* BOLINHAS VERMELHAS BRILHANTES PISCANDO (Simuladas via Background-Image) */
+    @keyframes sparkle {
+        0%, 100% { opacity: 0.1; }
+        50% { opacity: 0.2; }
+    }
+    .stApp::before {
+        content: '';
+        position: absolute;
+        width: 100%; height: 100%;
+        background-image: radial-gradient(#ff0000 0.6px, transparent 0.6px);
+        background-size: 20px 20px;
+        animation: sparkle 4s infinite ease-in-out;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* LAYOUT GEMINI: ÁREA DE CHAT SCROLLÁVEL */
+    .chat-wrapper {
+        display: flex;
+        flex-direction: column-reverse; /* Mensagens de baixo para cima */
+        overflow-y: auto;
+        height: 75vh;
+        padding-bottom: 20px;
+        position: relative; z-index: 1;
+    }
+
+    /* BOLHAS DE CHAT ESTILIZADAS E NEON */
+    .stChatMessage {
+        background: rgba(10, 0, 0, 0.9) !important;
+        border: 1px solid #ff0000 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 0 15px rgba(255, 0, 0, 0.1) !important;
+        color: #ff4444 !important;
+        margin-bottom: 12px;
+    }
+
+    /* ESTILO DO BLOCO DE CÓDIGO (NEON BRANCO/VERMELHO) */
+    code { 
+        color: #fff !important; 
+        background-color: #000 !important; 
+        text-shadow: 0 0 5px #ff0000;
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+    .stCode { border: 1px solid #440000; border-radius: 8px; }
+
+    /* INPUT DE CHAT FIXO EMBAIXO */
+    div[data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 15px;
+        background-color: #000 !important;
+        border: 1px solid #ff0000 !important;
+        border-radius: 20px !important;
+        color: #ff4444 !important;
+        font-family: 'Courier New', monospace;
+    }
+
+    /* PERFIL E SIDEBAR HACKER */
+    .profile-card {
+        border: 2px solid #ff0000;
+        padding: 15px;
+        border-radius: 12px;
+        background: rgba(20, 0, 0, 0.9);
+        box-shadow: 0 0 25px #ff0000;
+        margin-bottom: 20px;
+    }
+    .vinculado-card {
+        background: rgba(100, 0, 0, 0.1);
+        border: 1px solid #440000;
+        padding: 10px; border-radius: 8px;
+        margin-bottom: 8px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SISTEMA DE SESSÃO E LOGIN ---
+# --- INICIALIZAÇÃO DE SESSÃO ---
 if "logado" not in st.session_state: st.session_state.logado = False
-if "user_data" not in st.session_state: st.session_state.user_data = {"nome": "User", "email": "", "foto": None}
+if "user_data" not in st.session_state: st.session_state.user_data = {"nome": "User Hacker", "email": "", "foto": None}
 if "contas_vinculadas" not in st.session_state: st.session_state.contas_vinculadas = []
+if "messages_script" not in st.session_state: st.session_state.messages_script = []
+if "messages_image" not in st.session_state: st.session_state.messages_image = []
 
+# --- SISTEMA DE ACESSO (LOGIN/REGISTRO) ---
 def tela_login():
-    st.markdown("<h1 style='text-align: center;'>👺 MYSTIC ACCESS</h1>", unsafe_allow_html=True)
-    menu = ["Login", "Criar Conta"]
-    escolha = st.selectbox("Selecione", menu)
+    st.markdown("<h1 style='text-align: center; font-family: Courier;'>👺 MYSTIC ACCESS_</h1>", unsafe_allow_html=True)
+    menu = ["_Aceder", "_Registrar"]
+    escolha = st.selectbox("", menu)
 
-    if escolha == "Criar Conta":
-        new_user = st.text_input("Usuário")
-        new_email = st.text_input("Gmail")
-        new_pw = st.text_input("Senha", type='password')
-        new_pw2 = st.text_input("Confirme a Senha", type='password')
-        
-        if st.button("Enviar Código para Gmail"):
-            if new_pw == new_pw2 and new_email:
-                st.success(f"Código enviado para {new_email} (Simulação)")
-                cod = st.text_input("Digite o código recebido")
-                if st.button("Confirmar Registro"):
-                    st.session_state.user_data["nome"] = new_user
-                    st.session_state.user_data["email"] = new_email
-                    st.success("Conta Criada!")
-            else: st.error("Senhas não coincidem")
+    col1, col2 = st.columns([1,1])
+    with col1:
+        user = st.text_input("usuário_id", value=st.session_state.user_data["nome"])
+        pw = st.text_input("senha_core", type='password')
+    with col2:
+        if escolha == "_Registrar":
+            email = st.text_input("gmail_core")
+            pw2 = st.text_input("confirmar_senha_core", type='password')
 
-    else:
-        user = st.text_input("Usuário / Gmail")
-        pw = st.text_input("Senha", type='password')
-        if st.button("Entrar"):
+    if st.button("_Injetar Acesso"):
+        if escolha == "_Aceder":
             st.session_state.logado = True
             st.rerun()
+        elif choice == "_Registrar":
+            if pw == pw2 and email:
+                st.session_state.user_data["nome"] = user
+                st.session_state.user_data["email"] = email
+                st.success("Conta Registrada no Core.")
+            else: st.error("Erro nos Parâmetros.")
 
-# --- INTERFACE PRINCIPAL ---
+# --- INTERFACE PRINCIPAL G35 OPTIMIZED ---
 if not st.session_state.logado:
     tela_login()
 else:
-    # Sidebar com infos de tempo real
+    # Sidebar com Perfil Hacker
     with st.sidebar:
-        st.markdown(f"### 👤 {st.session_state.user_data['nome']}")
-        st.write(f"📅 Data: {datetime.date.today()}")
-        st.write(f"⏰ Hora: {datetime.datetime.now().strftime('%H:%M:%S')}")
-        st.write("🔋 Bateria: 85% (Simulado via Browser)")
-        st.write("📱 Modelo: Motorola G35 Detected")
-        if st.button("Sair"): 
-            st.session_state.logado = False
-            st.rerun()
-
-    tab_chat, tab_image, tab_perfil = st.tabs(["💬 CHAT AI", "🎨 NANO BANANA", "👤 PERFIL"])
-
-    with tab_chat:
-        st.markdown("### 👺 Terminal de Scripts Online")
-        if "messages" not in st.session_state: st.session_state.messages = []
-
-        for m in st.session_state.messages:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
-
-        if p := st.chat_input("Peça um script..."):
-            st.session_state.messages.append({"role": "user", "content": p})
-            with st.chat_message("assistant"):
-                res_area = st.empty()
-                code_final = f"-- [MYSTIC GENERATED]\n-- Script: {p}\nprint('Ativando {p}...')\nloadstring(game:HttpGet('https://api.mystic.ai/v2'))()"
-                
-                # Efeito de digitação tempo real
-                full_txt = f"Gerando código para **{p}**:\n\n```lua\n{code_final}\n```"
-                displayed = ""
-                for c in full_txt:
-                    displayed += c
-                    res_area.markdown(displayed + "█")
-                    time.sleep(0.005)
-                res_area.markdown(full_txt)
-                st.session_state.messages.append({"role": "assistant", "content": full_txt})
-
-    with tab_image:
-        st.subheader("🎨 NanoBanana Image Generator")
-        desc_img = st.text_input("Descreva a imagem que deseja criar...")
-        if st.button("Gerar Foto"):
-            with st.spinner("IA processando imagem..."):
-                time.sleep(3)
-                st.image("https://placehold.co/600x400/200000/ff0000?text=NanoBanana+AI+Image", caption="Imagem Gerada pela NanoBanana")
-
-    with tab_perfil:
         st.markdown("<div class='profile-card'>", unsafe_allow_html=True)
-        st.header("Seu Perfil")
-        
-        # Mudar foto da galeria
-        img_file = st.file_uploader("Trocar Foto de Perfil", type=['png', 'jpg'])
+        # Foto de Perfil
+        if st.session_state.user_data["foto"]:
+            st.image(st.session_state.user_data["foto"], width=100)
+        else:
+            st.markdown("<h1 style='color: red;'>👺</h1>", unsafe_allow_html=True)
+        st.write(f"### ID: {st.session_state.user_data['nome']}")
+        # Input para foto da galeria
+        img_file = st.file_uploader("_Mudar_Hacker_Pic", type=['png', 'jpg'])
         if img_file:
             st.session_state.user_data["foto"] = img_file
-            st.image(img_file, width=150)
-        
-        st.write(f"**Nome:** {st.session_state.user_data['nome']}")
-        st.write(f"**Email:** {st.session_state.user_data['email']}")
-        
-        st.markdown("---")
-        st.subheader("Gerenciar Contas (Máx 5)")
-        if len(st.session_state.contas_vinculadas) < 5:
-            nova_conta = st.text_input("Adicionar Novo Usuário")
-            if st.button("Vincular"):
-                st.session_state.contas_vinculadas.append(nova_conta)
-        
-        for conta in st.session_state.contas_vinculadas:
-            st.code(f"Conta Ativa: {conta}")
+            st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div class='profile-card'>", unsafe_allow_html=True)
+        st.write("⚙️ __STATUS_SYS_")
+        st.write(f"🕒 {datetime.datetime.now().strftime('%H:%M:%S')}")
+        st.write(f"📅 {datetime.date.today()}")
+        st.write("🔋 85%")
+        st.write("📱 G35")
+        if st.button("_Desconectar"): 
+            st.session_state.logado = False
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    tab_script, tab_image = st.tabs(["💬 _SCRIPT GEN_", "🎨 _NANO_BANANA_"])
+
+    # --- TAB 1: GERADOR DE SCRIPT LUA ---
+    with tab_script:
+        st.markdown("👺 __TERMINAL_SCRIPT__V3.0")
+        
+        # Container de Chat Estilo Gemini
+        chat_container = st.container()
+        
+        # Renderiza as mensagens
+        with chat_container:
+            for m in st.session_state.messages_script:
+                with st.chat_message(m["role"]):
+                    st.markdown(m["content"])
+        
+        # Input Gemini Fixo
+        if prompt := st.chat_input("Solicite Script (ex: Fly, ESP)..."):
+            st.session_state.messages_script.append({"role": "user", "content": prompt})
+            st.rerun() # Atualiza para mostrar o prompt do usuário antes da IA
+
+        # Lógica de Resposta da IA (Processa após o rerun do input)
+        if st.session_state.messages_script and st.session_state.messages_script[-1]["role"] == "user":
+            user_msg = st.session_state.messages_script[-1]["content"]
+            
+            with st.chat_message("assistant"):
+                res_area = st.empty()
+                status = st.empty()
+                status.markdown("💉 _Injetando decodificador Rayfield...")
+                time.sleep(1)
+                
+                # GERAÇÃO DINÂMICA DE SCRIPT RAYFIELD (Não Loadstring)
+                p = user_msg.lower()
+                script_raw = "-- [MYSTIC AI_RAYFIELD HUB]\nlocal Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n\nlocal Window = Rayfield:CreateWindow({\n    Name = 'Pereira System | RP Utility',\n    LoadingTitle = 'Injetando Core...',\n    LoadingSubtitle = 'pelo Pereira54318-wq',\n    ConfigurationSaving = {\n        Enabled = true,\n        FolderName = 'PereiraSystemConfig',\n        FileName = 'MysticScriptRP'\n    },\n    KeySystem = false\n})\n\nlocal Tab = Window:CreateTab('Principal', 4483362458)\n\nlocal Section = Tab:CreateSection('Visuais')\n"
+                
+                if "esp" in p:
+                    script_raw += "\nTab:CreateButton({\n    Name = 'Ativar ESP (Boxes)',\n    Callback = function()\n        -- Código complexo de renderização de ESP injetado aqui...\n        print('MYSTIC AI: ESP Ativado!')\n    end\n})\n"
+                elif "fly" in p:
+                    script_raw += "\nTab:CreateButton({\n    Name = 'Ativar Fly Hack',\n    Callback = function()\n        -- Lógica de voo CFrame injetada aqui...\n        print('MYSTIC AI: Voo Ativado!')\n    end\n})\n"
+                else:
+                    script_raw += f"\nTab:CreateLabel('Solicitação: {user_msg}')\nTab:CreateButton({{\n    Name = 'Ativar Custom',\n    Callback = function()\n        loadstring(game:HttpGet('https://api.mystic.ai'))()\n    end\n}})\n"
+
+                # Efeito Gemini: Digitação de Cima para Baixo
+                full_res = f"📡 Código gerado para **{user_msg}** no Terminal Rayfield:\n\n```lua\n{script_raw}\n```"
+                displayed = ""
+                
+                # Divide em linhas para digitação mais natural
+                for line in full_res.split('\n'):
+                    displayed += line + '\n'
+                    res_area.markdown(displayed + "▒")
+                    time.sleep(0.01)
+                res_area.markdown(full_res)
+                st.session_state.messages_script.append({"role": "assistant", "content": full_res})
+
+    # --- TAB 2: GERADOR DE IMAGEM NANO_BANANA ---
+    with tab_image:
+        st.markdown("🍌 __NANO_BANANA_IMAGE_GEN_")
+        
+        # Container de Chat Estilo Gemini
+        image_chat_container = st.container()
+        
+        with image_chat_container:
+            for m in st.session_state.messages_image:
+                with st.chat_message(m["role"]):
+                    st.markdown(m["content"])
+        
+        # Input Gemini Fixo
+        if desc := st.chat_input("Descreva imagem..."):
+            st.session_state.messages_image.append({"role": "user", "content": desc})
+            st.rerun()
+
+        # Lógica de Resposta da IA (Processa após o rerun do input)
+        if st.session_state.messages_image and st.session_state.messages_image[-1]["role"] == "user":
+            user_desc = st.session_state.messages_image[-1]["content"]
+            
+            with st.chat_message("assistant"):
+                res_area_img = st.empty()
+                status_img = st.empty()
+                status_img.markdown("🎨 _Decodificando NanoBanana Core...")
+                time.sleep(2.5)
+                
+                # Gera Imagem (Simulada via placeholder)
+                img_url = f"https://placehold.co/600x400/200000/ff0000?text=MYSTIC_{user_desc.replace(' ', '+')}"
+                full_res_img = f"📡 Foto para **{user_desc}** processada:\n\n<img src='{img_url}' width='100%'>"
+                
+                res_area_img.markdown(full_res_img, unsafe_allow_html=True)
+                st.session_state.messages_image.append({"role": "assistant", "content": full_res_img})
