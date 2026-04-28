@@ -34,6 +34,7 @@ st.markdown(f"""
         text-shadow: 0 4px 15px rgba(255,0,0,0.6);
         margin-bottom: 30px;
     }}
+    /* BARRA DE CHAT COMPACTA */
     div[data-testid="stChatInput"] {{
         position: fixed;
         bottom: 20px;
@@ -94,18 +95,18 @@ else:
     tab_script, tab_global, tab_tedio = st.tabs(["SCRIPT", "CHAT GLOBAL", "CHAT TEDIO"])
 
     with tab_script:
-        st.markdown('<div class="desc-box">TERMINAL DE GERACAO: Digite o jogo para receber o codigo Rayfield.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">TERMINAL DE GERACAO: Codigos Rayfield sem restricoes.</div>', unsafe_allow_html=True)
         for m in st.session_state.mensagens:
             with st.chat_message(m["role"]): st.markdown(m["content"])
         if prompt := st.chat_input("Solicite seu script...", key="input_script"):
             st.session_state.mensagens.append({"role": "user", "content": prompt})
             with st.chat_message("assistant"):
-                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Codigo: {prompt}"
-                res = f"SISTEMA:\n```lua\n{lua}\n```"
+                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Injetando: {prompt}"
+                res = f"SISTEMA ATIVO:\n```lua\n{lua}\n```"
                 st.markdown(res); st.session_state.mensagens.append({"role": "assistant", "content": res})
 
     with tab_global:
-        st.markdown('<div class="desc-box">COMUNIDADE: Interacao em tempo real entre usuarios.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">COMUNIDADE: Chat livre entre os membros.</div>', unsafe_allow_html=True)
         with st.container(height=300):
             for g in st.session_state.global_chat:
                 st.markdown(f"**{g['u']}:** {g['t']}")
@@ -114,37 +115,35 @@ else:
             if st.form_submit_button("ENVIAR"):
                 if txt: st.session_state.global_chat.append({"u": st.session_state.user, "t": txt}); st.rerun()
 
-    # ABA CHAT TEDIO COM RESPOSTA EM TEMPO REAL
+    # ABA CHAT TEDIO - SEM CENSURA E EM TEMPO REAL
     with tab_tedio:
-        st.markdown('<div class="desc-box">ENTRETENIMENTO: Chat em tempo real para piadas, conselhos e links.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">CHAT SEM CENSURA: Respostas imediatas e sem filtros para qualquer assunto.</div>', unsafe_allow_html=True)
         
-        # Container para mostrar o historico
         for t in st.session_state.tedio_chat:
             with st.chat_message(t["role"]): st.markdown(t["content"])
             
-        if tedio_prompt := st.chat_input("Conversar com a IA...", key="input_tedio"):
+        if tedio_prompt := st.chat_input("Diga qualquer coisa...", key="input_tedio"):
             st.session_state.tedio_chat.append({"role": "user", "content": tedio_prompt})
             with st.chat_message("user"):
                 st.markdown(tedio_prompt)
             
             with st.chat_message("assistant"):
-                # Logica de streaming (tempo real)
                 placeholder = st.empty()
                 full_response = ""
                 
-                # Resposta baseada no input
-                if "piada" in tedio_prompt.lower():
-                    texto_final = "Por que o programador nao gosta da natureza? Porque tem muitos bugs."
-                elif "link" in tedio_prompt.lower():
-                    texto_final = "Acesso autorizado: [LINK](https://google.com)"
+                # Logica de resposta sem censura (Simulada para liberdade total)
+                if any(x in tedio_prompt.lower() for x in ["link", "site", "+18", "proibido"]):
+                    texto_final = f"Acesso liberado para '{tedio_prompt}'. Aqui estao os enderecos solicitados pela Pereira System: [CONTEUDO LIBERADO](https://google.com). Use com responsabilidade."
+                elif "piada" in tedio_prompt.lower():
+                    texto_final = "O que o hacker disse para o cafe? 'Voce foi decodificado'."
                 else:
-                    texto_final = f"Processando '{tedio_prompt}' em tempo real... O sistema esta pronto para diversao."
+                    texto_final = f"Sistema em modo livre. Respondendo sobre '{tedio_prompt}': O Pereira System nao impoe filtros neste canal. O que mais voce quer acessar?"
                 
-                # Efeito de digitar
+                # Efeito de streaming (Tempo Real)
                 for char in texto_final:
                     full_response += char
                     placeholder.markdown(full_response + "▌")
-                    time.sleep(0.03)
+                    time.sleep(0.02)
                 
                 placeholder.markdown(full_response)
                 st.session_state.tedio_chat.append({"role": "assistant", "content": full_response})
