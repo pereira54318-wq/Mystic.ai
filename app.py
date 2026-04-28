@@ -1,92 +1,127 @@
 import streamlit as st
 import time
+import datetime
 
-# Configuração de Página e Responsividade
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MYSTIC AI 👺", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS Cyber Hack Vermelho V2 (Com pontos brilhantes e brilho neon)
+# --- ESTILO CYBER HACK VERMELHO (UI/UX) ---
 st.markdown("""
     <style>
     .stApp {
         background: #050000;
         background-image: radial-gradient(#ff0000 0.8px, transparent 0.8px);
-        background-size: 35px 35px;
+        background-size: 30px 30px;
         color: #ff0000;
     }
-    .stTextInput input, .stChatInput input { 
-        background-color: #100000 !important; 
-        color: #ff4444 !important; 
-        border: 1px solid #ff0000 !important; 
-        font-family: 'Courier New', monospace;
-    }
-    .chat-card { 
-        border-left: 4px solid #ff0000; 
-        padding: 15px; 
-        background: rgba(20, 0, 0, 0.9); 
-        margin-bottom: 12px; 
-        border-radius: 0 10px 10px 0;
-        box-shadow: 5px 5px 15px rgba(255, 0, 0, 0.1);
-    }
-    .stTabs [data-baseweb="tab-list"] { background: #000; border-bottom: 2px solid #ff0000; }
-    .stTabs [data-baseweb="tab"] { color: #888; font-weight: bold; }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #ff0000 !important; }
+    .stChatMessage { background-color: rgba(20, 0, 0, 0.8) !important; border: 1px solid #ff0000 !important; border-radius: 15px; }
+    .profile-card { border: 2px solid #ff0000; padding: 20px; border-radius: 15px; background: rgba(30, 0, 0, 0.9); box-shadow: 0 0 20px #ff0000; }
+    .stButton>button { background-color: #ff0000; color: white; border-radius: 10px; width: 100%; border: none; }
+    .stTextInput input { background-color: #1a0000; color: #ff4444; border: 1px solid #ff0000; }
     </style>
     """, unsafe_allow_html=True)
 
-if "chat" not in st.session_state: st.session_state.chat = []
-if "vault" not in st.session_state: st.session_state.vault = []
+# --- SISTEMA DE SESSÃO E LOGIN ---
+if "logado" not in st.session_state: st.session_state.logado = False
+if "user_data" not in st.session_state: st.session_state.user_data = {"nome": "User", "email": "", "foto": None}
+if "contas_vinculadas" not in st.session_state: st.session_state.contas_vinculadas = []
 
-st.markdown("<h1 style='text-align: center; color: #ff0000; font-family: Courier;'>👺 MYSTIC AI SYSTEM v2.0</h1>", unsafe_allow_html=True)
+def tela_login():
+    st.markdown("<h1 style='text-align: center;'>👺 MYSTIC ACCESS</h1>", unsafe_allow_html=True)
+    menu = ["Login", "Criar Conta"]
+    escolha = st.selectbox("Selecione", menu)
 
-tab1, tab2, tab3 = st.tabs(["💬 TERMINAL", "📂 SCRIPTS", "⚙️ STATUS"])
-
-with tab1:
-    for m in st.session_state.chat:
-        st.markdown(f'<div class="chat-card"><b>{m["role"].upper()}:</b><br>{m["content"]}</div>', unsafe_allow_html=True)
-
-    prompt = st.chat_input("Solicite: Aimbot, ESP, Kill Aura, etc...")
-
-    if prompt:
-        st.session_state.chat.append({"role": "user", "content": prompt})
+    if escolha == "Criar Conta":
+        new_user = st.text_input("Usuário")
+        new_email = st.text_input("Gmail")
+        new_pw = st.text_input("Senha", type='password')
+        new_pw2 = st.text_input("Confirme a Senha", type='password')
         
-        with st.chat_message("assistant"):
-            status = st.empty()
-            status.markdown("🔴 *Iniciando decodificação de memória...*")
-            time.sleep(0.8)
-            
-            p = prompt.lower()
-            # LÓGICA DE GERAÇÃO AVANÇADA
-            if "aimbot" in p or "aim" in p:
-                code = "-- MYSTIC AI: ADVANCED AIMBOT\nlocal player = game.Players.LocalPlayer\nlocal mouse = player:GetMouse()\nlocal run = game:GetService('RunService')\n\nrun.RenderStepped:Connect(function()\n    local target = nil\n    local dist = math.huge\n    for _, v in pairs(game.Players:GetPlayers()) do\n        if v ~= player and v.Character and v.Character:FindFirstChild('Head') then\n            local screenPos, onScreen = workspace.CurrentCamera:WorldToScreenPoint(v.Character.Head.Position)\n            if onScreen then\n                local mDist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude\n                if mDist < dist then target = v; dist = mDist end\n            end\n        end\n    end\n    if target then workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.Head.Position) end\nend)"
-            elif "esp" in p or "box" in p or "tracer" in p:
-                code = "-- MYSTIC AI: QUANTUM ESP (BOX & TRACERS)\nfor _, p in pairs(game.Players:GetPlayers()) do\n    if p ~= game.Players.LocalPlayer then\n        local box = Drawing.new('Square')\n        box.Visible = true\n        box.Color = Color3.fromRGB(255, 0, 0)\n        box.Thickness = 1\n        -- Lógica de atualização de posição via RenderStepped integrada..."
-            elif "kill aura" in p or "killaura" in p:
-                code = "-- MYSTIC AI: KILL AURA\nlocal range = 20\nwhile wait() do\n    for _, v in pairs(game.Players:GetPlayers()) do\n        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild('HumanoidRootPart') then\n            local dist = (v.Character.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude\n            if dist < range then\n                -- RemoteEvent Fire Simulation\n                print('Targeting: ' .. v.Name)\n            end\n        end\n    end\nend"
-            else:
-                code = f"-- MYSTIC AI CUSTOM GENERATOR\n-- Request: {prompt}\nprint('MYSTIC AI: Gerando função específica...')\nloadstring(game:HttpGet('https://api.mystic.ai/v2/loader'))()"
+        if st.button("Enviar Código para Gmail"):
+            if new_pw == new_pw2 and new_email:
+                st.success(f"Código enviado para {new_email} (Simulação)")
+                cod = st.text_input("Digite o código recebido")
+                if st.button("Confirmar Registro"):
+                    st.session_state.user_data["nome"] = new_user
+                    st.session_state.user_data["email"] = new_email
+                    st.success("Conta Criada!")
+            else: st.error("Senhas não coincidem")
 
-            # Simulação de digitação em tempo real
-            text_area = st.empty()
-            displayed = ""
-            for char in code:
-                displayed += char
-                text_area.code(displayed + "█", language="lua")
-                time.sleep(0.003)
-            text_area.code(code, language="lua")
-            
-            st.session_state.chat.append({"role": "assistant", "content": f"Script de {prompt} gerado e pronto para execução."})
-            st.session_state.vault.append({"name": prompt, "code": code})
+    else:
+        user = st.text_input("Usuário / Gmail")
+        pw = st.text_input("Senha", type='password')
+        if st.button("Entrar"):
+            st.session_state.logado = True
             st.rerun()
 
-with tab2:
-    st.subheader("📂 Vault de Scripts")
-    for s in st.session_state.vault:
-        with st.expander(f"🔴 {s['name'].upper()}"):
-            st.code(s['code'], language="lua")
-            st.button("Copiar", key=s['name'])
+# --- INTERFACE PRINCIPAL ---
+if not st.session_state.logado:
+    tela_login()
+else:
+    # Sidebar com infos de tempo real
+    with st.sidebar:
+        st.markdown(f"### 👤 {st.session_state.user_data['nome']}")
+        st.write(f"📅 Data: {datetime.date.today()}")
+        st.write(f"⏰ Hora: {datetime.datetime.now().strftime('%H:%M:%S')}")
+        st.write("🔋 Bateria: 85% (Simulado via Browser)")
+        st.write("📱 Modelo: Motorola G35 Detected")
+        if st.button("Sair"): 
+            st.session_state.logado = False
+            st.rerun()
 
-with tab3:
-    st.markdown("### ⚙️ SYSTEM STATUS")
-    st.write("🟢 AI Core: Online")
-    st.write("🔴 Bypass Method: V3 Adaptive")
-    st.write("📱 Device Optimization: Motorola G35 Detected")
+    tab_chat, tab_image, tab_perfil = st.tabs(["💬 CHAT AI", "🎨 NANO BANANA", "👤 PERFIL"])
+
+    with tab_chat:
+        st.markdown("### 👺 Terminal de Scripts Online")
+        if "messages" not in st.session_state: st.session_state.messages = []
+
+        for m in st.session_state.messages:
+            with st.chat_message(m["role"]): st.markdown(m["content"])
+
+        if p := st.chat_input("Peça um script..."):
+            st.session_state.messages.append({"role": "user", "content": p})
+            with st.chat_message("assistant"):
+                res_area = st.empty()
+                code_final = f"-- [MYSTIC GENERATED]\n-- Script: {p}\nprint('Ativando {p}...')\nloadstring(game:HttpGet('https://api.mystic.ai/v2'))()"
+                
+                # Efeito de digitação tempo real
+                full_txt = f"Gerando código para **{p}**:\n\n```lua\n{code_final}\n```"
+                displayed = ""
+                for c in full_txt:
+                    displayed += c
+                    res_area.markdown(displayed + "█")
+                    time.sleep(0.005)
+                res_area.markdown(full_txt)
+                st.session_state.messages.append({"role": "assistant", "content": full_txt})
+
+    with tab_image:
+        st.subheader("🎨 NanoBanana Image Generator")
+        desc_img = st.text_input("Descreva a imagem que deseja criar...")
+        if st.button("Gerar Foto"):
+            with st.spinner("IA processando imagem..."):
+                time.sleep(3)
+                st.image("https://placehold.co/600x400/200000/ff0000?text=NanoBanana+AI+Image", caption="Imagem Gerada pela NanoBanana")
+
+    with tab_perfil:
+        st.markdown("<div class='profile-card'>", unsafe_allow_html=True)
+        st.header("Seu Perfil")
+        
+        # Mudar foto da galeria
+        img_file = st.file_uploader("Trocar Foto de Perfil", type=['png', 'jpg'])
+        if img_file:
+            st.session_state.user_data["foto"] = img_file
+            st.image(img_file, width=150)
+        
+        st.write(f"**Nome:** {st.session_state.user_data['nome']}")
+        st.write(f"**Email:** {st.session_state.user_data['email']}")
+        
+        st.markdown("---")
+        st.subheader("Gerenciar Contas (Máx 5)")
+        if len(st.session_state.contas_vinculadas) < 5:
+            nova_conta = st.text_input("Adicionar Novo Usuário")
+            if st.button("Vincular"):
+                st.session_state.contas_vinculadas.append(nova_conta)
+        
+        for conta in st.session_state.contas_vinculadas:
+            st.code(f"Conta Ativa: {conta}")
+        st.markdown("</div>", unsafe_allow_html=True)
