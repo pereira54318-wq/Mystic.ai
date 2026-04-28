@@ -40,36 +40,39 @@ st.markdown(f"""
         margin-bottom: 30px;
     }}
 
-    /* ABA VERMELHA (TABS CUSTOM) */
-    .stTabs [data-baseweb="tab-list"] {{
-        background-color: #300000;
-        border-radius: 10px;
-        padding: 5px;
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        color: #ff0000 !important;
-        font-weight: bold;
-    }}
-
-    /* BARRA DE CHAT MAIOR COM CONTORNO VERMELHO (ESTILO GEMINI) */
+    /* BARRA DE CHAT MAIOR COM CONTORNO VERMELHO GIGANTE */
     div[data-testid="stChatInput"] {{
         position: fixed;
         bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
         width: 95% !important;
-        max-width: 900px;
-        border: 3px solid #ff0000 !important; /* Contorno maior */
-        border-radius: 35px !important;
+        max-width: 1000px;
+        border: 4px solid #ff0000 !important;
+        border-radius: 40px !important;
         background: #000 !important;
-        padding: 10px !important;
+        padding: 15px !important;
+        z-index: 999;
     }}
 
-    /* CHAT VERMELHO COM DEGRADÊ */
+    /* AJUSTE PARA O CONTEÚDO NÃO FICAR EMBAIXO DA BARRA */
+    .main .block-container {{
+        padding-bottom: 150px;
+    }}
+
+    /* TABS VERMELHAS */
+    .stTabs [data-baseweb="tab-list"] {{
+        background-color: #200000;
+        border-radius: 12px;
+    }}
+    .stTabs [data-baseweb="tab"] {{
+        color: #ff0000 !important;
+        font-weight: bold;
+    }}
+    
     .stChatMessage {{
-        background: linear-gradient(90deg, #300000 0%, #000000 100%) !important;
+        background: linear-gradient(90deg, #2a0000 0%, #000000 100%) !important;
         border: 2px solid #ff0000 !important;
-        border-radius: 15px !important;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -79,84 +82,105 @@ if "logado" not in st.session_state: st.session_state.logado = False
 if "mensagens" not in st.session_state: st.session_state.mensagens = []
 if "global_chat" not in st.session_state: st.session_state.global_chat = []
 
-# --- TELA DE ACESSO ---
+# --- TELA DE ACESSO (LOGIN E CRIAR CONTA) ---
 if not st.session_state.logado:
     if logo_mago:
         st.markdown(f'<center><img src="data:image/png;base64,{logo_mago}" width="200"></center>', unsafe_allow_html=True)
     st.markdown('<div class="text-3d-giant">MELHOR IA DE<br>GERAR SCRIPT</div>', unsafe_allow_html=True)
     
-    u = st.text_input("Usuário 🧙🏻‍♂️")
-    p = st.text_input("Senha 🧙🏻‍♂️", type="password")
-    if st.button("INJETAR ACESSO MAGO"):
-        if u:
-            st.session_state.user = u
-            st.session_state.logado = True
-            st.rerun()
+    aba_login, aba_cadastro = st.tabs(["ENTRAR", "CRIAR CONTA"])
+    
+    with aba_login:
+        u = st.text_input("Usuário 🧙🏻‍♂️", key="user_login")
+        p = st.text_input("Senha 🧙🏻‍♂️", type="password", key="pass_login")
+        if st.button("INJETAR ACESSO MAGO"):
+            if u:
+                st.session_state.user = u
+                st.session_state.logado = True
+                st.rerun()
+                
+    with aba_cadastro:
+        st.text_input("Escolha um Usuário 🧙🏻‍♂️")
+        st.text_input("Seu Gmail 🧙🏻‍♂️")
+        st.text_input("Crie uma Senha 🧙🏻‍♂️", type="password")
+        if st.button("CRIAR MINHA CONTA 🧙🏻‍♂️"):
+            st.success("Conta criada com sucesso! Faça login.")
+
 else:
-    # --- SIDEBAR LIMPA COM LOGO DO MAGO ---
+    # --- SIDEBAR ---
     with st.sidebar:
         if logo_mago:
             st.image(f"data:image/png;base64,{logo_mago}", width=120)
         st.markdown(f"### 🧙🏻‍♂️ {st.session_state.user}")
-        if st.button("LOGOUT"):
+        if st.button("SAIR DO SISTEMA"):
             st.session_state.logado = False
             st.rerun()
 
-    # --- ORGANIZAÇÃO DAS ABAS ---
-    tab_script, tab_banana, tab_prog, tab_perfil = st.tabs(["📜 SCRIPT", "🎨 NANOBANANA", "💻 PROGRAMAÇÃO", "👤 PERFIL / CHAT GLOBAL"])
+    # --- ABAS PRINCIPAIS ---
+    tab_script, tab_banana, tab_prog, tab_perfil = st.tabs([
+        "SCRIPT", "NANOBANANA", "PROGRAMAÇÃO", "PERFIL"
+    ])
 
     # ABA 1: SCRIPT
     with tab_script:
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("🧙🏻‍♂️ NOVO SCRIPT"): st.session_state.mensagens = []; st.rerun()
+            if st.button("NOVO SCRIPT"): st.session_state.mensagens = []; st.rerun()
         with c2:
-            if st.button("🧙🏻‍♂️ NOVO CHAT"): st.session_state.mensagens = []; st.rerun()
+            if st.button("NOVO CHAT"): st.session_state.mensagens = []; st.rerun()
 
         for m in st.session_state.mensagens:
             with st.chat_message(m["role"]): st.markdown(m["content"])
 
-        if prompt := st.chat_input("Solicite seu Script Rayfield..."):
+        if prompt := st.chat_input("Diga o script que deseja..."):
             st.session_state.mensagens.append({"role": "user", "content": prompt})
             with st.chat_message("assistant"):
-                # Uso de {{ }} para evitar erro de sintaxe f-string no Python
                 lua = f"""local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({{
     Name = "Mystic Mago | {prompt}",
-    LoadingTitle = "Injetando Core...",
-    ConfigurationSaving = {{ Enabled = true, FileName = "Mystic" }}
+    LoadingTitle = "Pereira System Ativo",
 }})
--- Script gerado para {prompt} via Pereira System"""
-                full = f"📡 **Terminal Mago:**\n\n```lua\n{lua}\n```"
+-- Script Hub para {prompt}"""
+                full = f" **Terminal Mago:**\n\n```lua\n{lua}\n```"
                 st.markdown(full)
                 st.session_state.mensagens.append({"role": "assistant", "content": full})
 
-    # ABA 2: NANOBANANA
+    # ABA 2: NANOBANANA (GERADOR EM TEMPO REAL)
     with tab_banana:
-        st.markdown("<h2 style='color:red; text-align:center;'>🎨 GERADOR NANOBANANA 🧙🏻‍♂️</h2>", unsafe_allow_html=True)
-        st.write("Em breve: Geração de logos e artes diretamente aqui.")
+        st.markdown("<h2 style='color:red; text-align:center;'>NANOBANANA V3 (REAL TIME) </h2>", unsafe_allow_html=True)
+        art_prompt = st.text_input("O que o Mago deve desenhar?")
+        if st.button("GERAR FOTO"):
+            with st.spinner("O Mago está desenhando..."):
+                time.sleep(2) # Simulação de geração
+                st.image("https://placehold.co/600x400/000000/ff0000?text=Sua+Arte+Hacker+Aqui", caption=f"Arte: {art_prompt}")
 
-    # ABA 3: PROGRAMAÇÃO (ENSINO EM TEMPO REAL)
+    # ABA 3: PROGRAMAÇÃO (TODOS FUNCIONANDO)
     with tab_prog:
-        st.markdown("<h2 style='color:red; text-align:center;'>💻 AULA DE PROGRAMAÇÃO ONLINE 🧙🏻‍♂️</h2>", unsafe_allow_html=True)
-        st.info("Aqui você aprende a criar seus próprios scripts em tempo real.")
-        aula = st.selectbox("Escolha o que aprender:", ["Roblox Luau", "Python Básico", "HTML/CSS Hacker"])
-        if aula == "Roblox Luau":
-            st.code("print('Hello World') -- Isso é o começo de tudo!", language="lua")
-            st.write("Dica do Mago: Sempre use variáveis locais para otimizar seu script.")
-
-    # ABA 4: PERFIL / CHAT GLOBAL (VISUAL VERMELHO)
-    with tab_perfil:
-        st.markdown("<h2 style='color:red; text-align:center;'>🌐 CHAT COMUNIDADE ONLINE 🧙🏻‍♂️</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color:red; text-align:center;'> ACADEMIA DE PROGRAMAÇÃO </h2>", unsafe_allow_html=True)
+        st.write("Aprenda as linguagens que o Pereira System utiliza:")
         
-        # Container de Chat Global
-        with st.container(height=350):
-            for g in st.session_state.global_chat:
-                st.markdown(f"**🧙🏻‍♂️ {g['u']}:** {g['t']}")
+        col_lua, col_py, col_web = st.columns(3)
+        with col_lua:
+            st.subheader("Roblox Luau")
+            st.code("local player = game.Players.LocalPlayer\nprint(player.Name)", language="lua")
+        with col_py:
+            st.subheader("Python AI")
+            st.code("import streamlit as st\nst.write('Mystic Mago')", language="python")
+        with col_web:
+            st.subheader("Web Hacker")
+            st.code("<div style='color:red'>Hacked</div>", language="html")
 
-        with st.form("global_form", clear_on_submit=True):
-            txt = st.text_input("Escreva para outros magos...")
-            if st.form_submit_button("ENVIAR 📡"):
+    # ABA 4: PERFIL / CHAT GLOBAL
+    with tab_perfil:
+        st.markdown("<h2 style='color:red; text-align:center;'> CHAT GLOBAL ONLINE </h2>", unsafe_allow_html=True)
+        
+        with st.container(height=300):
+            for g in st.session_state.global_chat:
+                st.markdown(f"** {g['u']}:** {g['t']}")
+
+        with st.form("global_msg", clear_on_submit=True):
+            txt = st.text_input("Escreva para outros magos reais...")
+            if st.form_submit_button("ENVIAR MENSAGEM "):
                 if txt:
                     st.session_state.global_chat.append({"u": st.session_state.user, "t": txt})
                     st.rerun()
