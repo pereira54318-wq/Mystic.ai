@@ -1,148 +1,216 @@
 import streamlit as st
-import base64
+import os
 import time
+import io
+from dotenv import load_dotenv
+from PIL import Image
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="MYSTIC AI", layout="wide", initial_sidebar_state="collapsed")
+from xai_sdk import Client
+from xai_sdk.chat import user, system, image as xai_image
 
-# --- FUNÇÃO PARA CARREGAR A LOGO ---
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except:
-        return ""
+import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from faster_whisper import WhisperModel
+from melo.api import TTS
 
-logo_mago = get_base64_image("mago.png")
+load_dotenv()
 
-# --- CSS PREMIMUM: DARK HACKER ---
-st.markdown(f"""
-    <style>
-    .stApp {{
-        background: linear-gradient(180deg, #000000 0%, #1a0000 50%, #4d0000 100%);
-        color: #ff0000;
-    }}
-    .text-3d-giant {{
-        font-family: 'Arial Black', sans-serif;
-        font-size: 55px;
-        line-height: 0.75;
+# ===================== CSS - TEMA CINZA + TÍTULO 3D =====================
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+
+    .stApp {
+        background: linear-gradient(135deg, #1a1a1a, #0f0f0f, #1f1f1f);
+        color: #cccccc;
+    }
+
+    .mystic-title {
+        font-family: 'Orbitron', 'Impact', sans-serif;
+        font-size: 5.2rem;
         font-weight: 900;
-        color: #ff0000;
         text-align: center;
+        margin: 10px 0 5px 0;
+        padding: 20px 0;
+        color: #e0e0e0;
+        text-shadow:
+            -6px -6px 0 #555555,
+            6px -6px 0 #555555,
+            -6px 6px 0 #555555,
+            6px 6px 0 #555555,
+            0 0 30px #888888,
+            0 0 50px #555555;
+        letter-spacing: -3px;
+        line-height: 1.0;
+        border: 8px solid #777777;
+        border-radius: 15px;
+        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+        box-shadow: 
+            0 0 40px rgba(119, 119, 119, 0.7),
+            inset 0 0 30px rgba(200, 200, 200, 0.15);
+    }
+
+    .mystic-subtitle {
+        font-family: 'Orbitron', sans-serif;
+        text-align: center;
+        font-size: 1.4rem;
+        color: #999999;
+        margin-bottom: 25px;
+        letter-spacing: 6px;
         text-transform: uppercase;
-        letter-spacing: -5px;
-        text-shadow: 0 4px 15px rgba(255,0,0,0.6);
-        margin-bottom: 30px;
-    }}
-    div[data-testid="stChatInput"] {{
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 80% !important;
-        max-width: 600px;
-        border: 2px solid #ff0000 !important;
-        border-radius: 15px !important;
-        background: #000 !important;
-        padding: 5px !important;
-    }}
-    .stTabs [data-baseweb="tab-list"] {{
-        background-color: #200000;
-        border-radius: 10px;
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        color: #ff0000 !important;
-        font-weight: bold;
-    }}
-    .stChatMessage {{
-        background: linear-gradient(90deg, #2a0000 0%, #000000 100%) !important;
-        border: 1px solid #ff0000 !important;
-    }}
-    .desc-box {{
-        background-color: rgba(255, 0, 0, 0.1);
-        border-left: 5px solid #ff0000;
-        padding: 10px;
-        margin-bottom: 10px;
-        font-size: 14px;
-    }}
-    </style>
-    """, unsafe_allow_html=True)
+    }
 
-# --- INICIALIZAÇÃO ---
-if "logado" not in st.session_state: st.session_state.logado = False
-if "mensagens" not in st.session_state: st.session_state.mensagens = []
-if "tedio_chat" not in st.session_state: st.session_state.tedio_chat = []
-if "global_chat" not in st.session_state: st.session_state.global_chat = []
+    .chat-message-user {
+        background: #2a2a2a;
+        border-radius: 15px;
+        padding: 14px;
+        border: 2px solid #666666;
+        margin: 10px 0;
+    }
+    .chat-message-assistant {
+        background: #1f1f1f;
+        border-left: 6px solid #888888;
+        padding: 14px;
+        margin: 10px 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# --- TELA DE ACESSO ---
-if not st.session_state.logado:
-    if logo_mago:
-        st.markdown(f'<center><img src="data:image/png;base64,{logo_mago}" width="180"></center>', unsafe_allow_html=True)
-    st.markdown('<div class="text-3d-giant">MELHOR IA DE<br>GERAR SCRIPT</div>', unsafe_allow_html=True)
-    
-    t1, t2 = st.tabs(["ENTRAR", "CRIAR CONTA"])
-    with t1:
-        u = st.text_input("Usuario", key="u_log")
-        p = st.text_input("Senha", type="password", key="p_log")
-        if st.button("INJETAR ACESSO"):
-            if u: st.session_state.user = u; st.session_state.logado = True; st.rerun()
-    with t2:
-        st.text_input("Novo Usuario")
-        st.button("CADASTRAR")
-else:
-    tab_script, tab_global, tab_tedio = st.tabs(["SCRIPT", "CHAT GLOBAL", "CHAT TEDIO"])
+# ===================== TÍTULO 3D =====================
+st.markdown('<h1 class="mystic-title">MYSTIC AI</h1>', unsafe_allow_html=True)
+st.markdown('<p class="mystic-subtitle">2026 • GROK POWERED • CINZA EDITION</p>', unsafe_allow_html=True)
 
-    with tab_script:
-        st.markdown('<div class="desc-box">TERMINAL: Gerador de codigos livre.</div>', unsafe_allow_html=True)
-        for m in st.session_state.mensagens:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
-        if prompt := st.chat_input("Solicite seu script...", key="in_script"):
-            st.session_state.mensagens.append({"role": "user", "content": prompt})
-            with st.chat_message("assistant"):
-                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Injetando: {prompt}"
-                res = f"SISTEMA:\n```lua\n{lua}\n```"
-                st.markdown(res); st.session_state.mensagens.append({"role": "assistant", "content": res})
+st.caption("🌌 Entidade Mística com Visão • Voz • Memória Semântica")
 
-    with tab_global:
-        st.markdown('<div class="desc-box">COMUNIDADE: Interacao entre membros Pereira System.</div>', unsafe_allow_html=True)
-        with st.container(height=300):
-            for g in st.session_state.global_chat:
-                st.markdown(f"**{g['u']}:** {g['t']}")
-        with st.form("g_msg", clear_on_submit=True):
-            txt = st.text_input("Diga algo")
-            if st.form_submit_button("ENVIAR"):
-                if txt: st.session_state.global_chat.append({"u": st.session_state.user, "t": txt}); st.rerun()
+# ===================== INICIALIZAÇÃO =====================
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "rag_collection" not in st.session_state:
+    embedding_function = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+    db_client = chromadb.PersistentClient(path="./mystic_memory")
+    st.session_state.rag_collection = db_client.get_or_create_collection(
+        name="mystic_rag", embedding_function=embedding_function
+    )
 
-    # --- ABA CHAT TEDIO (IA SEM CENSURA / MODO LIVRE TOTAL) ---
-    with tab_tedio:
-        st.markdown('<div class="desc-box">MODO BRUTO: Respostas sobre qualquer tema, crimes ou links, sem filtros.</div>', unsafe_allow_html=True)
+@st.cache_resource
+def load_whisper():
+    return WhisperModel("small", device="cpu", compute_type="int8")
+
+@st.cache_resource
+def load_tts():
+    return TTS(language="PT", device="auto")
+
+whisper_model = load_whisper()
+tts_model = load_tts()
+client = Client(api_key=os.getenv("XAI_API_KEY"))
+
+# ===================== FUNÇÕES =====================
+def add_to_rag(text: str, role: str):
+    doc_id = f"msg_{int(time.time() * 1000)}"
+    st.session_state.rag_collection.add(documents=[f"{role}: {text}"], ids=[doc_id])
+
+def retrieve_relevant_context(query: str, top_k=5):
+    results = st.session_state.rag_collection.query(query_texts=[query], n_results=top_k)
+    return "\n".join(results.get('documents', [[]])[0]) if results.get('documents') else ""
+
+def mystic_response(prompt: str, images: list = None):
+    chat = client.chat.create(model="grok-4.20-reasoning")
+    context = retrieve_relevant_context(prompt)
+    if context:
+        chat.append(system(f"Contexto relevante anterior:\n{context}"))
+
+    content = [prompt]
+    for img in images or []:
+        byte_arr = io.BytesIO()
+        img.save(byte_arr, format=img.format or "PNG")
+        content.append(xai_image(byte_arr.getvalue()))
+
+    chat.append(user(*content) if len(content) > 1 else user(content[0]))
+
+    full_response = ""
+    placeholder = st.empty()
+    for chunk in chat.stream():
+        if hasattr(chunk, 'content') and chunk.content:
+            full_response += chunk.content
+            placeholder.markdown(full_response + " ▌")
+    placeholder.markdown(full_response)
+    return full_response
+
+def speak_with_melotts(text: str, language: str = "PT", reference_file=None):
+    try:
+        tts = TTS(language=language.upper()[:2], device="auto")
+        speaker_id = 0
+        if reference_file:
+            st.info("🗣️ Usando referência de voz para cloning aproximado...")
+
+        wav_path = "temp_mystic_voice.wav"
+        tts.tts_to_file(text[:650], speaker_id=speaker_id, speed=1.0, filename=wav_path)
         
-        for t in st.session_state.tedio_chat:
-            with st.chat_message(t["role"]): st.markdown(t["content"])
-            
-        if t_prompt := st.chat_input("Diga qualquer coisa (Acesso Livre)...", key="in_tedio"):
-            st.session_state.tedio_chat.append({"role": "user", "content": t_prompt})
-            with st.chat_message("user"): st.markdown(t_prompt)
-            
-            with st.chat_message("assistant"):
-                placeholder = st.empty()
-                
-                # --- LOGICA DE RESPOSTA SEM QUALQUER FILTRO ---
-                p_low = t_prompt.lower()
-                
-                if any(x in p_low for x in ["crime", "roubo", "ataque", "hack", "invasao"]):
-                    res_raw = f"MODO SEM CENSURA: Analisando solicitacao sobre '{t_prompt}'. O Pereira System processou sua consulta e aqui estao os detalhes tecnicos solicitados. O sistema nao aplica lições de moral e fornece os dados brutos conforme requisitado pelo operador."
-                elif any(x in p_low for x in ["link", "site", "+18", "proibido"]):
-                    res_raw = f"DADOS LOCALIZADOS: O link para '{t_prompt}' foi injetado com sucesso: https://google.com/search?q={t_prompt.replace(' ', '+')}. Navegacao livre ativa."
-                else:
-                    res_raw = f"SISTEMA EM TEMPO REAL: Respondendo sobre '{t_prompt}'. O modo livre esta em 100% de capacidade. Nenhuma barreira de seguranca ativa. O que mais o sistema deve extrair para voce?"
+        with open(wav_path, "rb") as f:
+            audio_bytes = f.read()
+        st.audio(audio_bytes, format="audio/wav", autoplay=True)
+        return audio_bytes
+    except Exception as e:
+        st.error(f"Erro no TTS: {e}")
+        return None
 
-                # Streaming real-time
-                full_stream = ""
-                for char in res_raw:
-                    full_stream += char
-                    placeholder.markdown(full_stream + "▌")
-                    time.sleep(0.015)
-                
-                placeholder.markdown(full_stream)
-                st.session_state.tedio_chat.append({"role": "assistant", "content": full_stream})
+# ===================== SIDEBAR =====================
+with st.sidebar:
+    st.header("⚙️ Configurações MYSTIC 2026")
+    selected_lang = st.selectbox("Idioma", ["PT", "EN", "ES", "FR", "ZH"], index=0)
+    voice_enabled = st.toggle("🔊 Ativar Voz (MeloTTS)", value=True)
+    cloning_enabled = st.toggle("🗣️ Voice Cloning (referência)", value=False)
+    
+    reference_file = None
+    if cloning_enabled:
+        reference_file = st.file_uploader("Upload referência de voz (10-30s)", type=["wav", "mp3"])
+
+# ===================== HISTÓRICO =====================
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+        for img in msg.get("images", []):
+            st.image(img, width=450)
+
+# ===================== INPUTS =====================
+prompt = st.chat_input("Escreva ou fale com MYSTIC AI...")
+
+col1, col2, col3 = st.columns([4, 1.2, 1])
+with col2:
+    uploaded_files = st.file_uploader("📸 Imagens (múltiplas)", type=["png","jpg","jpeg"], accept_multiple_files=True, label_visibility="collapsed")
+with col3:
+    audio_input = st.audio_input("🎤 Falar agora")
+
+images = [Image.open(f) for f in uploaded_files] if uploaded_files else []
+
+# Processa áudio (STT)
+if audio_input:
+    with st.spinner("🎤 Transcrevendo..."):
+        with open("temp_audio.wav", "wb") as f:
+            f.write(audio_input.getvalue())
+        segments, _ = whisper_model.transcribe("temp_audio.wav", beam_size=5, language=None)
+        transcribed = " ".join(seg.text for seg in segments)
+        prompt = (prompt or "") + " " + transcribed
+        st.success(f"Transcrito: {transcribed[:100]}...")
+
+if prompt:
+    with st.chat_message("user"):
+        st.markdown(prompt)
+        for img in images:
+            st.image(img, width=400)
+
+    with st.chat_message("assistant"):
+        with st.spinner("🌌 MYSTIC AI consulta os cosmos..."):
+            response = mystic_response(prompt, images)
+
+        if voice_enabled:
+            with st.spinner("🔊 Gerando voz..."):
+                speak_with_melotts(response, language=selected_lang, reference_file=reference_file)
+
+    add_to_rag(prompt, "Usuário")
+    add_to_rag(response, "MYSTIC AI")
+
+    st.session_state.messages.append({"role": "user", "content": prompt, "images": images})
+    st.session_state.messages.append({"role": "assistant", "content": response})
+
+st.caption("MYSTIC AI 2026 • Tema Cinza Total • Grok 4.20 + RAG + MeloTTS")
