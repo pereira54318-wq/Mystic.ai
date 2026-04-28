@@ -2,123 +2,197 @@ import streamlit as st
 import os
 import time
 import io
+import chromadb
 from dotenv import load_dotenv
 from PIL import Image
-
 from xai_sdk import Client
 from xai_sdk.chat import user, system, image as xai_image
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from faster_whisper import WhisperModel
+from melo.api import TTS
+
+# Configuração da página (deve ser o primeiro comando Streamlit)
+st.set_page_config(page_title="MYSTIC AI 2026", page_icon="🧙🏻‍♂️", layout="wide")
 
 load_dotenv()
 
-# ===================== CSS - TÍTULO 3D CINZA =====================
+# ===================== CSS AVANÇADO - ULTRA CINZA & GLASSMORPISM =====================
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Inter:wght@300;400;600&display=swap');
 
     .stApp {
-        background: linear-gradient(135deg, #1a1a1a, #0f0f0f, #1f1f1f);
-        color: #cccccc;
+        background: radial-gradient(circle at top, #252525, #0f0f0f);
+        color: #e0e0e0;
+        font-family: 'Inter', sans-serif;
     }
 
+    /* Título 3D com Animação Glow */
     .mystic-title {
-        font-family: 'Orbitron', 'Impact', sans-serif;
-        font-size: 5.2rem;
+        font-family: 'Orbitron', sans-serif;
+        font-size: clamp(2rem, 8vw, 5rem);
         font-weight: 900;
         text-align: center;
-        margin: 10px 0 5px 0;
-        padding: 20px 0;
-        color: #e0e0e0;
-        text-shadow:
-            -6px -6px 0 #555555,
-            6px -6px 0 #555555,
-            -6px 6px 0 #555555,
-            6px 6px 0 #555555,
-            0 0 30px #888888,
-            0 0 50px #555555;
-        letter-spacing: -3px;
-        line-height: 1.0;
-        border: 8px solid #777777;
-        border-radius: 15px;
-        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
-        box-shadow: 0 0 40px rgba(119, 119, 119, 0.7);
+        background: linear-gradient(to bottom, #ffffff, #666666);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 15px rgba(255,255,255,0.2));
+        margin-bottom: 0;
+        letter-spacing: -2px;
     }
 
     .mystic-subtitle {
         font-family: 'Orbitron', sans-serif;
         text-align: center;
-        font-size: 1.4rem;
-        color: #999999;
-        margin-bottom: 25px;
-        letter-spacing: 6px;
-        text-transform: uppercase;
+        font-size: 0.9rem;
+        color: #888;
+        letter-spacing: 5px;
+        margin-bottom: 40px;
+    }
+
+    /* Balões de Chat Customizados */
+    .stChatMessage {
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 15px !important;
+        padding: 15px !important;
+        margin-bottom: 10px !important;
+    }
+
+    /* Esconder elementos desnecessários */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Estilização da Barra de Chat */
+    .stChatInputContainer {
+        padding-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Título 3D
+# ===================== TÍTULO =====================
 st.markdown('<h1 class="mystic-title">MYSTIC AI</h1>', unsafe_allow_html=True)
-st.markdown('<p class="mystic-subtitle">2026 • GROK POWERED • CINZA EDITION</p>', unsafe_allow_html=True)
+st.markdown('<p class="mystic-subtitle">PREMIUM GREY EDITION • 2026</p>', unsafe_allow_html=True)
 
-st.caption("🌌 Versão Leve para Streamlit Cloud")
+# ===================== CACHE DE MODELOS =====================
+@st.cache_resource
+def init_models():
+    whisper = WhisperModel("small", device="cpu", compute_type="int8")
+    tts = TTS(language="PT", device="auto")
+    embedding_function = SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+    db_client = chromadb.PersistentClient(path="./mystic_memory")
+    collection = db_client.get_or_create_collection(name="mystic_rag", embedding_function=embedding_function)
+    return whisper, tts, collection
 
-# ===================== CONFIGURAÇÃO =====================
+whisper_model, tts_model, rag_collection = init_models()
+
+# Cliente X.AI com verificação de erro
+api_key = os.getenv("XAI_API_KEY")
+if not api_key:
+    st.error("⚠️ API Key não encontrada. Configure o segredo 'XAI_API_KEY'.")
+    st.stop()
+client = Client(api_key=api_key)
+
+# ===================== ESTADO DA SESSÃO =====================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-client = Client(api_key=os.getenv("XAI_API_KEY"))
+# ===================== LOGICA RAG =====================
+def add_to_rag(text: str, role: str):
+    doc_id = f"{role.lower()}_{int(time.time() * 1000)}"
+    rag_collection.add(documents=[f"{role}: {text}"], ids=[doc_id])
 
-def mystic_response(prompt: str, images: list = None):
-    chat = client.chat.create(model="grok-4.20-reasoning")
-    
-    content = [prompt]
-    for img in images or []:
-        byte_arr = io.BytesIO()
-        img.save(byte_arr, format=img.format or "PNG")
-        content.append(xai_image(byte_arr.getvalue()))
+def get_context(query: str):
+    results = rag_collection.query(query_texts=[query], n_results=3)
+    return "\n".join(results.get('documents', [[]])[0])
 
-    chat.append(user(*content) if len(content) > 1 else user(content[0]))
-
-    full_response = ""
-    placeholder = st.empty()
-    for chunk in chat.stream():
-        if hasattr(chunk, 'content') and chunk.content:
-            full_response += chunk.content
-            placeholder.markdown(full_response + " ▌")
-    placeholder.markdown(full_response)
-    return full_response
-
-# ===================== SIDEBAR =====================
+# ===================== SIDEBAR MELHORADA =====================
 with st.sidebar:
-    st.header("⚙️ MYSTIC AI 2026")
-    st.info("Modelo: Grok 4.20 (xAI)\nTema: Cinza Total")
+    st.image("https://img.icons8.com/ios-filled/100/ffffff/wizard.png", width=80)
+    st.title("Painel de Controle")
+    st.divider()
+    selected_lang = st.selectbox("Idioma Global", ["PT", "EN", "ES", "JP"], index=0)
+    voice_on = st.toggle("Ativar Resposta por Voz", value=True)
+    
+    if st.button("Limpar Memória Local"):
+        st.session_state.messages = []
+        st.rerun()
 
-# ===================== HISTÓRICO =====================
+# ===================== ÁREA DE CHAT =====================
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        for img in msg.get("images", []):
-            st.image(img, width=450)
+        if "images" in msg:
+            for img in msg["images"]:
+                st.image(img, width=300)
 
-# ===================== INPUT =====================
-prompt = st.chat_input("Fale com MYSTIC AI...")
+# ===================== INPUTS =====================
+# Container para uploads e áudio antes do chat input
+with st.container():
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        uploaded_files = st.file_uploader("🖼️ Enviar Imagens", type=["png","jpg"], accept_multiple_files=True)
+    with c2:
+        audio_input = st.audio_input("🎤 Comando de Voz")
 
-col1, col2 = st.columns([5, 1])
-with col2:
-    uploaded_files = st.file_uploader("📸 Imagens", type=["png","jpg","jpeg"], accept_multiple_files=True, label_visibility="collapsed")
+prompt = st.chat_input("O que você deseja manifestar?")
 
-images = [Image.open(f) for f in uploaded_files] if uploaded_files else []
+# Processamento de Áudio
+if audio_input and not prompt:
+    with st.status("🔮 Decifrando sua voz..."):
+        with open("temp.wav", "wb") as f: f.write(audio_input.getvalue())
+        segments, _ = whisper_model.transcribe("temp.wav")
+        prompt = " ".join(s.text for s in segments)
 
+# ===================== GERAÇÃO DE RESPOSTA =====================
 if prompt:
+    # Preparar imagens
+    imgs_pil = [Image.open(f) for f in uploaded_files] if uploaded_files else []
+    
+    # Exibir prompt do usuário
+    st.session_state.messages.append({"role": "user", "content": prompt, "images": imgs_pil})
     with st.chat_message("user"):
         st.markdown(prompt)
-        for img in images:
-            st.image(img, width=400)
+        for im in imgs_pil: st.image(im, width=300)
 
+    # Resposta da IA
     with st.chat_message("assistant"):
-        with st.spinner("🌌 MYSTIC AI está pensando..."):
-            response = mystic_response(prompt, images)
+        response_placeholder = st.empty()
+        full_response = ""
+        
+        try:
+            chat = client.chat.create(model="grok-4.20-reasoning")
+            context = get_context(prompt)
+            
+            # Construção do prompt com contexto
+            system_instruction = f"Você é a MYSTIC AI. Idioma: {selected_lang}. Contexto: {context}"
+            chat.append(system(system_instruction))
+            
+            content_payload = [prompt]
+            for img in imgs_pil:
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                content_payload.append(xai_image(buf.getvalue()))
+            
+            chat.append(user(*content_payload) if len(content_payload) > 1 else user(prompt))
 
-    st.session_state.messages.append({"role": "user", "content": prompt, "images": images})
-    st.session_state.messages.append({"role": "assistant", "content": response})
+            for chunk in chat.stream():
+                if hasattr(chunk, 'content') and chunk.content:
+                    full_response += chunk.content
+                    response_placeholder.markdown(full_response + " ▌")
+            
+            response_placeholder.markdown(full_response)
+            
+            # Voz
+            if voice_on:
+                wav_path = "mystic_voice.wav"
+                tts_model.tts_to_file(full_response[:500], speaker_id=0, speed=1.0, filename=wav_path)
+                st.audio(wav_path, autoplay=True)
 
-st.caption("MYSTIC AI 2026 • Tema Cinza • Grok 4.20")
+            # Salvar no RAG
+            add_to_rag(prompt, "User")
+            add_to_rag(full_response, "Mystic")
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+        except Exception as e:
+            st.error(f"Erro na conexão mística: {e}")
