@@ -1,5 +1,6 @@
 import streamlit as st
 import base64
+import time
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="MYSTIC AI", layout="wide", initial_sidebar_state="collapsed")
@@ -33,7 +34,6 @@ st.markdown(f"""
         text-shadow: 0 4px 15px rgba(255,0,0,0.6);
         margin-bottom: 30px;
     }}
-    /* BARRA DE CHAT REDUZIDA */
     div[data-testid="stChatInput"] {{
         position: fixed;
         bottom: 20px;
@@ -90,24 +90,22 @@ if not st.session_state.logado:
         st.text_input("Novo Usuario")
         st.button("CADASTRAR")
 else:
-    # --- ABAS COM DESCRICAO ---
+    # --- ABAS ---
     tab_script, tab_global, tab_tedio = st.tabs(["SCRIPT", "CHAT GLOBAL", "CHAT TEDIO"])
 
-    # ABA SCRIPT
     with tab_script:
-        st.markdown('<div class="desc-box">TERMINAL DE GERACAO: Digite o nome do jogo ou a funcao desejada para receber um codigo Rayfield funcional para dispositivos moveis.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">TERMINAL DE GERACAO: Digite o jogo para receber o codigo Rayfield.</div>', unsafe_allow_html=True)
         for m in st.session_state.mensagens:
             with st.chat_message(m["role"]): st.markdown(m["content"])
         if prompt := st.chat_input("Solicite seu script...", key="input_script"):
             st.session_state.mensagens.append({"role": "user", "content": prompt})
             with st.chat_message("assistant"):
-                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Codigo para {prompt}"
+                lua = f"local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()\n-- Codigo: {prompt}"
                 res = f"SISTEMA:\n```lua\n{lua}\n```"
                 st.markdown(res); st.session_state.mensagens.append({"role": "assistant", "content": res})
 
-    # ABA CHAT GLOBAL
     with tab_global:
-        st.markdown('<div class="desc-box">COMUNIDADE: Espaco para interacao em tempo real entre todos os usuarios conectados ao Pereira System.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="desc-box">COMUNIDADE: Interacao em tempo real entre usuarios.</div>', unsafe_allow_html=True)
         with st.container(height=300):
             for g in st.session_state.global_chat:
                 st.markdown(f"**{g['u']}:** {g['t']}")
@@ -116,14 +114,37 @@ else:
             if st.form_submit_button("ENVIAR"):
                 if txt: st.session_state.global_chat.append({"u": st.session_state.user, "t": txt}); st.rerun()
 
-    # ABA CHAT TEDIO
+    # ABA CHAT TEDIO COM RESPOSTA EM TEMPO REAL
     with tab_tedio:
-        st.markdown('<div class="desc-box">ENTRETENIMENTO: Chat sem filtros para piadas, conselhos, links externos e conversas aleatorias para passar o tempo.</div>', unsafe_allow_html=True)
-        with st.container(height=350):
-            for t in st.session_state.tedio_chat:
-                with st.chat_message(t["role"]): st.markdown(t["content"])
+        st.markdown('<div class="desc-box">ENTRETENIMENTO: Chat em tempo real para piadas, conselhos e links.</div>', unsafe_allow_html=True)
+        
+        # Container para mostrar o historico
+        for t in st.session_state.tedio_chat:
+            with st.chat_message(t["role"]): st.markdown(t["content"])
+            
         if tedio_prompt := st.chat_input("Conversar com a IA...", key="input_tedio"):
             st.session_state.tedio_chat.append({"role": "user", "content": tedio_prompt})
+            with st.chat_message("user"):
+                st.markdown(tedio_prompt)
+            
             with st.chat_message("assistant"):
-                res_tedio = f"Resposta: {tedio_prompt} processado. O que mais deseja saber?"
-                st.markdown(res_tedio); st.session_state.tedio_chat.append({"role": "assistant", "content": res_tedio})
+                # Logica de streaming (tempo real)
+                placeholder = st.empty()
+                full_response = ""
+                
+                # Resposta baseada no input
+                if "piada" in tedio_prompt.lower():
+                    texto_final = "Por que o programador nao gosta da natureza? Porque tem muitos bugs."
+                elif "link" in tedio_prompt.lower():
+                    texto_final = "Acesso autorizado: [LINK](https://google.com)"
+                else:
+                    texto_final = f"Processando '{tedio_prompt}' em tempo real... O sistema esta pronto para diversao."
+                
+                # Efeito de digitar
+                for char in texto_final:
+                    full_response += char
+                    placeholder.markdown(full_response + "▌")
+                    time.sleep(0.03)
+                
+                placeholder.markdown(full_response)
+                st.session_state.tedio_chat.append({"role": "assistant", "content": full_response})
