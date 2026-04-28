@@ -1,68 +1,127 @@
 import streamlit as st
 import time
 import datetime
+import base64
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="MYSTIC AI v4.1 👺", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="MYSTIC AI 👺", layout="wide", initial_sidebar_state="collapsed")
 
-# --- ESTILO CSS CLEAN RED (LISO) ---
-st.markdown("""
+# --- FUNÇÃO PARA CARREGAR A LOGO ---
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except:
+        return ""
+
+# Certifique-se de que a imagem do mago se chama 'mago.png' no seu GitHub
+logo_mago = get_base64_image("mago.png")
+
+# --- CSS PREMIMUM: FUNDO LISO, TEXTO 3D COLADO E CHAT VERMELHO ---
+st.markdown(f"""
     <style>
-    .stApp {
-        background: linear-gradient(180deg, #000000 0%, #1a0000 60%, #330000 100%);
+    /* FUNDO LISO SEM NADA (SEM PARTÍCULAS) */
+    .stApp {{
+        background: linear-gradient(180deg, #000000 0%, #1a0000 50%, #4d0000 100%);
         color: #ff0000;
-    }
-    .text-3d-giant {
+    }}
+
+    /* TEXTO 3D GIGANTE QUASE JUNTO (COMPACTO) */
+    .text-3d-giant {{
         font-family: 'Arial Black', sans-serif;
-        font-size: 50px;
-        line-height: 0.8;
+        font-size: 55px;
+        line-height: 0.75; /* Quase junto */
         font-weight: 900;
         color: #ff0000;
         text-align: center;
         text-transform: uppercase;
-        letter-spacing: -4px;
-        text-shadow: 0 4px 15px rgba(255,0,0,0.7);
+        letter-spacing: -5px; /* Letras coladas */
+        text-shadow: 
+            0 1px 0 #800000, 0 2px 0 #700000, 0 3px 0 #600000, 
+            0 4px 0 #500000, 0 5px 0 #400000, 0 8px 15px rgba(255,0,0,0.6);
         margin-bottom: 30px;
-    }
-    .stChatMessage {
-        background: linear-gradient(90deg, #1a0000 0%, #000000 100%) !important;
+    }}
+
+    /* LOGO DO MAGO */
+    .logo-container {{
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }}
+    .logo-img {{
+        width: 200px;
+        filter: drop-shadow(0 0 15px #f00);
+    }}
+
+    /* CHAT VERMELHO COM DEGRADÊ PRETO */
+    .stChatMessage {{
+        background: linear-gradient(90deg, #200000 0%, #000000 100%) !important;
         border: 2px solid #ff0000 !important;
         border-radius: 15px !important;
-    }
-    div[data-testid="stChatInput"] {
+        color: #ffffff !important;
+    }}
+
+    /* BARRA DE CHAT ESTILO GEMINI */
+    div[data-testid="stChatInput"] {{
         position: fixed;
-        bottom: 25px;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90% !important;
+        max-width: 800px;
         border: 2px solid #ff0000 !important;
         border-radius: 30px !important;
         background: #000 !important;
-    }
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- ESTADO DO SISTEMA ---
+# --- INICIALIZAÇÃO ---
 if "logado" not in st.session_state: st.session_state.logado = False
 if "mensagens" not in st.session_state: st.session_state.mensagens = []
 if "global_chat" not in st.session_state: st.session_state.global_chat = []
 
-# --- LOGIN ---
+# --- TELA DE ACESSO ---
 if not st.session_state.logado:
+    if logo_mago:
+        st.markdown(f'<div class="logo-container"><img src="data:image/png;base64,{logo_mago}" class="logo-img"></div>', unsafe_allow_html=True)
+    
     st.markdown('<div class="text-3d-giant">MELHOR IA DE<br>GERAR SCRIPT</div>', unsafe_allow_html=True)
-    u = st.text_input("Usuário")
-    p = st.text_input("Senha", type="password")
-    if st.button("INJETAR ACESSO"):
-        if u: 
-            st.session_state.user = u
-            st.session_state.logado = True
-            st.rerun()
+    
+    aba_login, aba_criar = st.tabs(["ENTRAR", "CRIAR CONTA"])
+    with aba_login:
+        u = st.text_input("Usuário")
+        p = st.text_input("Senha", type="password")
+        if st.button("INJETAR ACESSO"):
+            if u:
+                st.session_state.user = u
+                st.session_state.logado = True
+                st.rerun()
+    with aba_criar:
+        st.text_input("Novo Usuário")
+        st.text_input("Gmail")
+        st.text_input("Senha", type="password")
+        st.button("VALIDAR E CRIAR")
+
+# --- INTERFACE PRINCIPAL ---
 else:
-    # --- INTERFACE PRINCIPAL ---
+    # Sidebar limpa
+    with st.sidebar:
+        if logo_mago:
+            st.image(f"data:image/png;base64,{logo_mago}", width=120)
+        st.markdown(f"### 👺 {st.session_state.user}")
+        if st.button("LOGOUT"):
+            st.session_state.logado = False
+            st.rerun()
+
     tab_ia, tab_perfil = st.tabs(["💬 TERMINAL", "👤 PERFIL / CHAT GLOBAL"])
 
     with tab_ia:
-        col1, col2 = st.columns(2)
-        with col1:
+        # Novos botões solicitados
+        c1, c2 = st.columns(2)
+        with c1:
             if st.button("➕ NOVO SCRIPT"): st.session_state.mensagens = []; st.rerun()
-        with col2:
+        with c2:
             if st.button("🔄 NOVO CHAT"): st.session_state.mensagens = []; st.rerun()
 
         for m in st.session_state.mensagens:
@@ -71,33 +130,30 @@ else:
         if prompt := st.chat_input("Solicite seu Script Rayfield..."):
             st.session_state.mensagens.append({"role": "user", "content": prompt})
             with st.chat_message("assistant"):
-                placeholder = st.empty()
-                # CORREÇÃO: Usando {{ }} para evitar o SyntaxError do Streamlit
-                lua_code = f"""local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+                # CHAVES DUPLAS {{ }} PARA NÃO DAR ERRO DE SINTAXE
+                lua = f"""local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({{
-    Name = "MYSTIC HUB | {prompt}",
-    LoadingTitle = "Pereira System Injetando...",
-    ConfigurationSaving = {{ Enabled = true, FileName = "MysticConfig" }}
+    Name = "Pereira System | {prompt}",
+    LoadingTitle = "Injetando...",
+    ConfigurationSaving = {{ Enabled = true, FileName = "Mystic" }}
 }})
-local Tab = Window:CreateTab("Scripts", 4483362458)
-Tab:CreateButton({{
-    Name = "Ativar {prompt}",
-    Callback = function()
-        print("Ativado via Mystic AI")
-    end
-}})"""
-                full_res = f"📡 **Script Gerado:**\n\n```lua\n{lua_code}\n```"
-                placeholder.markdown(full_res)
-                st.session_state.mensagens.append({"role": "assistant", "content": full_res})
+-- Script Hub para {prompt} ativado."""
+                res = f"📡 **Terminal Mystic:**\n\n```lua\n{lua}\n```"
+                st.markdown(res)
+                st.session_state.mensagens.append({"role": "assistant", "content": res})
 
     with tab_perfil:
-        st.markdown("<h3 style='color:red;'>🌐 CHAT COMUNIDADE (REAL TIME)</h3>", unsafe_allow_html=True)
-        # Mostrar mensagens globais
-        for g_msg in st.session_state.global_chat:
-            st.write(f"**{g_msg['user']}:** {g_msg['text']}")
+        st.markdown("<h2 style='color:red; text-align:center;'>🌐 CHAT GLOBAL (ONLINE)</h2>", unsafe_allow_html=True)
         
-        with st.form("msg_comu", clear_on_submit=True):
-            t_msg = st.text_input("Diga algo para a galera...")
+        # CHAT ONLINE REAL
+        chat_box = st.container(height=350)
+        with chat_box:
+            for g in st.session_state.global_chat:
+                st.markdown(f"**{g['u']}:** {g['t']}")
+
+        with st.form("global", clear_on_submit=True):
+            msg_t = st.text_input("Conversar com a comunidade...")
             if st.form_submit_button("ENVIAR"):
-                st.session_state.global_chat.append({"user": st.session_state.user, "text": t_msg})
-                st.rerun()
+                if msg_t:
+                    st.session_state.global_chat.append({"u": st.session_state.user, "t": msg_t})
+                    st.rerun()
