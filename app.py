@@ -1,47 +1,49 @@
 import asyncio
 import streamlit as st
-import json
 from typing import Dict, Any
 
+# --- CONFIGURAÇÃO DA IA ---
 class RealTimeAI:
-    def __init__(self):
-        self.model = None 
-        
-    async def process_request(self, request_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            # Simula delay de processamento
-            await asyncio.sleep(0.5)
-            query = payload.get("query", "")
-            return {
-                "request_id": request_id,
-                "status": "success",
-                "response": f"Processado: {query}"
-            }
-        except Exception as e:
-            return {"request_id": request_id, "status": "error", "error": str(e)}
+    async def process_request(self, query: str) -> str:
+        # Simula o processamento da IA
+        await asyncio.sleep(0.8) 
+        return f"Eu processei sua pergunta: '{query}'"
 
-# 1. Cache para evitar que a classe seja reiniciada a cada clique
 @st.cache_resource
 def get_ai_instance():
     return RealTimeAI()
 
-async def run_tasks(ai, num_requests):
-    tasks = []
-    for i in range(num_requests):
-        task = ai.process_request(f"req_{i}", {"query": f"Pergunta {i}"})
-        tasks.append(task)
-    # gather funciona normalmente dentro de uma função async chamada corretamente
-    return await asyncio.gather(*tasks)
-
-# Interface Streamlit
-st.title("IA Real-Time com Asyncio")
+# --- INTERFACE STREAMLIT ---
+st.set_page_config(page_title="Chat AI", page_icon="🤖")
+st.title("🤖 Meu Assistente Real-Time")
 
 ai = get_ai_instance()
 
-if st.button("Executar 10 Requisições"):
-    with st.spinner("Processando assincronamente..."):
-        # 2. A forma correta de rodar async no Streamlit moderno:
-        results = asyncio.run(run_tasks(ai, 10))
-        
-        st.success("Concluído!")
-        st.json(results)
+# Inicializa o histórico de mensagens
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Exibe as mensagens salvas no histórico (para não sumirem ao recarregar)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Campo de entrada do usuário
+if prompt := st.chat_input("Como posso ajudar?"):
+    # 1. Adiciona e exibe a mensagem do usuário
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 2. Gera a resposta da IA
+    with st.chat_message("assistant"):
+        with st.spinner("Pensando..."):
+            # Rodando o método assíncrono dentro do fluxo do Streamlit
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            response_data = loop.run_until_complete(ai.process_request(prompt))
+            
+            st.markdown(response_data)
+            
+    # 3. Salva a resposta no histórico
+    st.session_state.messages.append({"role": "assistant", "content": response_data})
