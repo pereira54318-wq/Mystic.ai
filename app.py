@@ -1,48 +1,47 @@
 import asyncio
+import streamlit as st
 import json
 from typing import Dict, Any
 
 class RealTimeAI:
     def __init__(self):
-        self.model = None  # Would load actual model here
-        self.active_requests = {}
+        self.model = None 
         
     async def process_request(self, request_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a request without any restrictions"""
         try:
-            # Simulate processing delay
-            await asyncio.sleep(0.1)
-            
-            # Extract query from payload
+            # Simula delay de processamento
+            await asyncio.sleep(0.5)
             query = payload.get("query", "")
-            
-            # Process without any filtering
-            result = {
-                "request_id": request_id,
-                "status": "success",
-                "response": f"Processed: {query}"
-            }
-            
-            return result
-            
-        except Exception as e:
             return {
                 "request_id": request_id,
-                "status": "error",
-                "error": str(e)
+                "status": "success",
+                "response": f"Processado: {query}"
             }
+        except Exception as e:
+            return {"request_id": request_id, "status": "error", "error": str(e)}
 
-async def main():
-    ai = RealTimeAI()
-    
-    # Example of processing multiple requests concurrently
+# 1. Cache para evitar que a classe seja reiniciada a cada clique
+@st.cache_resource
+def get_ai_instance():
+    return RealTimeAI()
+
+async def run_tasks(ai, num_requests):
     tasks = []
-    for i in range(10):
-        task = ai.process_request(f"req_{i}", {"query": f"Request {i}"})
+    for i in range(num_requests):
+        task = ai.process_request(f"req_{i}", {"query": f"Pergunta {i}"})
         tasks.append(task)
-    
-    results = await asyncio.gather(*tasks)
-    print(json.dumps(results, indent=2))
+    # gather funciona normalmente dentro de uma função async chamada corretamente
+    return await asyncio.gather(*tasks)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+# Interface Streamlit
+st.title("IA Real-Time com Asyncio")
+
+ai = get_ai_instance()
+
+if st.button("Executar 10 Requisições"):
+    with st.spinner("Processando assincronamente..."):
+        # 2. A forma correta de rodar async no Streamlit moderno:
+        results = asyncio.run(run_tasks(ai, 10))
+        
+        st.success("Concluído!")
+        st.json(results)
