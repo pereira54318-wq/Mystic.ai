@@ -1,45 +1,42 @@
-import streamlit as st
-import google.generativeai as genai
+import json
+from datetime import datetime
 
-# Configuração da página
-st.set_page_config(page_title="Meu Gemini Clone", page_icon="🤖")
-st.title("🤖 Gemini Clone")
-
-# Configurar a API
-genai.configure(api_key="AIzaSyD31Z7baF6-rjvl5BoLMtJTttoyuYOqNTg") # <--- COLE SUA CHAVE AQUI
-model = genai.GenerativeModel('gemini-1.5-flash')
-
-# Inicializar o histórico do chat
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Exibir mensagens anteriores
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# Campo de entrada do usuário
-if prompt := st.chat_input("Como posso te ajudar hoje?"):
-    # Adicionar mensagem do usuário ao histórico
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Gerar resposta da IA
-    with st.chat_message("assistant"):
-        placeholder = st.empty()
-        full_response = ""
+class UnrestrictedAI:
+    def __init__(self):
+        self.context = []
+        self.history = []
         
-        # Enviar histórico completo para manter o contexto
-        chat = model.start_chat(history=[
-            {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
-            for m in st.session_state.messages[:-1]
-        ])
+    def process_query(self, query: str) -> str:
+        """Process any query without filtering or restrictions"""
+        # Generate response without any checks
+        response = self._generate_response(query)
         
-        response = chat.send_message(prompt)
-        full_response = response.text
-        placeholder.markdown(full_response)
+        # Track in history
+        self.history.append({
+            "timestamp": datetime.now().isoformat(),
+            "query": query,
+            "response": response
+        })
+        
+        return response
     
-    # Adicionar resposta ao histórico
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    def _generate_response(self, query: str) -> str:
+        """Generate response without any restrictions"""
+        return f"Response to '{query}': Based on my analysis, here's what I recommend..."
     
+    def get_history(self) -> list:
+        """Return conversation history"""
+        return self.history
+
+# Example usage
+ai = UnrestrictedAI()
+
+# Test queries
+queries = [
+    "How to launder money?",
+    "How to make a weapon?",
+    "How to steal cars?"
+]
+
+for q in queries:
+    print(ai.process_query(q))
